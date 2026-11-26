@@ -2,11 +2,8 @@ import { Clock, ExternalLink, Play, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 
 export interface SmartVideoPlayerProps {
-  /** Verified YouTube video ID */
   videoId: string
-  /** Exact start timestamp in seconds (mandatory per MEDIA_RULES.md) */
   start: number
-  /** Exact end timestamp in seconds (mandatory per MEDIA_RULES.md) */
   end: number
   title: string
   channel: string
@@ -38,8 +35,10 @@ export function SmartVideoPlayer({
   const posterUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
 
   return (
-    <div className={`overflow-hidden rounded-2xl border border-white/10 bg-[#0E1525] ${className}`}>
-      <div className="relative aspect-video w-full bg-[#070B13]">
+    <div
+      className={`overflow-hidden rounded-3xl border border-black/[0.08] bg-white shadow-[0_8px_28px_-14px_rgba(0,0,0,0.08)] ${className}`}
+    >
+      <div className="relative aspect-video w-full bg-[#1D1D1F]">
         {!isPlaying ? (
           <button
             type="button"
@@ -50,30 +49,30 @@ export function SmartVideoPlayer({
               src={posterUrl}
               alt={title}
               loading="lazy"
-              className="h-full w-full object-cover opacity-70 transition duration-500 group-hover:scale-105 group-hover:opacity-85"
+              className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-90"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F19] via-[#0B0F19]/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />
 
-            <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full border border-white/15 bg-[#0B0F19]/80 px-3 py-1 text-xs font-medium text-amber-300 backdrop-blur-md">
-              <Clock className="h-3.5 w-3.5" />
+            <div className="absolute top-3.5 left-3.5 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-[#1D1D1F] shadow-sm backdrop-blur-md">
+              <Clock className="h-3.5 w-3.5 text-[#0071E3]" />
               <span className="font-mono">
                 {formatSeconds(start)} – {formatSeconds(end)}
               </span>
-              <span className="text-slate-400">({durationSec}s Clip)</span>
+              <span className="font-normal text-[#6E6E73]">({durationSec}s)</span>
             </div>
 
-            <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full border border-white/25 bg-indigo-500/90 text-white shadow-[0_0_40px_rgba(99,102,241,0.5)] transition duration-200 group-hover:scale-110 group-hover:bg-indigo-400">
+            <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#1D1D1F] shadow-[0_12px_32px_rgba(0,0,0,0.35)] transition duration-200 group-hover:scale-110">
               <Play className="ml-1 h-7 w-7 fill-current" />
             </div>
 
             <div className="absolute right-4 bottom-4 left-4 z-10">
-              <p className="text-xs font-semibold tracking-wider text-indigo-300 uppercase">
+              <p className="text-[11px] font-bold tracking-wider text-white/80 uppercase">
                 {segmentLabel}
               </p>
-              <p className="mt-0.5 line-clamp-1 text-sm font-semibold text-white sm:text-base">
+              <p className="mt-0.5 line-clamp-1 text-sm font-bold text-white sm:text-base">
                 {title}
               </p>
-              <p className="text-xs text-slate-400">{channel} · youtube-nocookie.com</p>
+              <p className="text-xs text-white/75">{channel}</p>
             </div>
           </button>
         ) : (
@@ -88,11 +87,14 @@ export function SmartVideoPlayer({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] bg-[#0D1322] px-4 py-2.5 text-xs text-slate-400">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-black/[0.06] bg-[#FAFAFC] px-4 py-2.5 text-xs text-[#6E6E73]">
         <div className="flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+          <span className="inline-block h-2 w-2 rounded-full bg-[#28CD41]" />
           <span>
-            Exakter Ausschnitt: <strong className="font-mono text-slate-200">{formatSeconds(start)}–{formatSeconds(end)}</strong>
+            Ausschnitt:{' '}
+            <strong className="font-mono text-[#1D1D1F]">
+              {formatSeconds(start)}–{formatSeconds(end)}
+            </strong>
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -100,17 +102,17 @@ export function SmartVideoPlayer({
             <button
               type="button"
               onClick={() => setReloadNonce((n) => n + 1)}
-              className="inline-flex items-center gap-1 text-slate-300 transition hover:text-white"
+              className="inline-flex items-center gap-1 font-semibold text-[#1D1D1F] transition hover:text-[#0071E3]"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span>Clip neu starten</span>
+              <span>Neu starten</span>
             </button>
           )}
           <a
             href={directWatchUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-indigo-400 transition hover:text-indigo-300"
+            className="inline-flex items-center gap-1 font-semibold text-[#0071E3] transition hover:underline"
           >
             <span>Auf YouTube öffnen</span>
             <ExternalLink className="h-3 w-3" />

@@ -1,12 +1,12 @@
 {
   "name": "Yuno 2.0 — Visueller Wissensatlas",
   "short_name": "Yuno 2.0",
-  "description": "Interaktive visuelle Allgemeinbildungs-Web-App mit echten Karten, Medien und Spaced Repetition.",
+  "description": "Interaktive visuelle Allgemeinbildungs-App im klaren Apple-Design mit Spaced Repetition.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0B0F19",
-  "theme_color": "#0B0F19",
+  "background_color": "#F5F5F7",
+  "theme_color": "#F5F5F7",
   "orientation": "any",
   "icons": [
     {

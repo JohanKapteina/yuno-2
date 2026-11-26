@@ -22,7 +22,6 @@ export interface GeoRoute {
   id: string
   points: Array<[number, number]>
   color: string
-  /** 0..1 fraction of route drawn via stroke-dashoffset */
   progress?: number
   dashed?: boolean
   strokeWidth?: number
@@ -36,9 +35,7 @@ export interface GeoCircleOverlay {
 }
 
 export interface RealGeoMapProps {
-  /** Initial [lon, lat] center */
   center: [number, number]
-  /** Mercator projection scale (e.g. 1200 for Western Med, 1900 for Italy) */
   scale: number
   markers?: GeoMarker[]
   routes?: GeoRoute[]
@@ -112,7 +109,6 @@ export function RealGeoMap({
     }
   }
 
-  // Approximate pixel radius on Mercator projection at the target latitude
   const circlePixelRadius = useMemo(() => {
     if (!circleOverlay) return 0
     const p1 = projection([circleOverlay.lon, circleOverlay.lat])
@@ -123,7 +119,7 @@ export function RealGeoMap({
   }, [circleOverlay, projection])
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#070B14]">
+    <div className="overflow-hidden rounded-3xl border border-black/[0.08] bg-white shadow-[0_8px_28px_-14px_rgba(0,0,0,0.08)]">
       <div className={`relative w-full ${heightClass}`}>
         <svg
           ref={svgRef}
@@ -134,24 +130,17 @@ export function RealGeoMap({
           aria-label={caption ?? 'Interaktive geografische Karte auf Basis von World-Atlas TopoJSON'}
         >
           <defs>
-            <radialGradient id="yunoOceanGrad" cx="50%" cy="45%" r="70%">
-              <stop offset="0%" stopColor="#0E182B" />
-              <stop offset="100%" stopColor="#060A13" />
-            </radialGradient>
-            <filter id="yunoGlow" x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur stdDeviation="3.5" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
+            <linearGradient id="appleOceanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#DCEBFB" />
+              <stop offset="100%" stopColor="#CEE3F8" />
+            </linearGradient>
           </defs>
 
-          {/* Ocean backdrop */}
-          <rect x={0} y={0} width={VIEW_W} height={VIEW_H} fill="url(#yunoOceanGrad)" />
+          {/* Calm Apple Maps Ocean */}
+          <rect x={0} y={0} width={VIEW_W} height={VIEW_H} fill="url(#appleOceanGrad)" />
 
-          {/* Graticule grid */}
-          <path d={graticulePath} fill="none" stroke="rgba(148, 163, 184, 0.08)" strokeWidth={0.8} />
+          {/* Subtle graticule grid */}
+          <path d={graticulePath} fill="none" stroke="rgba(15, 23, 42, 0.06)" strokeWidth={0.75} />
 
           {/* Real TopoJSON Countries (world-atlas 50m) */}
           <g>
@@ -159,10 +148,10 @@ export function RealGeoMap({
               <path
                 key={country.id}
                 d={country.d}
-                fill="#172238"
-                stroke="rgba(255, 255, 255, 0.14)"
-                strokeWidth={0.75}
-                className="transition-colors duration-200 hover:fill-[#1D2B47]"
+                fill="#F9FAFB"
+                stroke="#C3CEDB"
+                strokeWidth={0.85}
+                className="transition-colors duration-200 hover:fill-[#F1F5F9]"
               />
             ))}
           </g>
@@ -176,15 +165,15 @@ export function RealGeoMap({
                 cx={pt[0]}
                 cy={pt[1]}
                 r={circlePixelRadius}
-                fill={`${circleOverlay.color}22`}
+                fill={`${circleOverlay.color}20`}
                 stroke={circleOverlay.color}
-                strokeWidth={1.6}
-                strokeDasharray="5 4"
+                strokeWidth={2}
+                strokeDasharray="6 4"
               />
             )
           })()}
 
-          {/* Geodesic routes with animated stroke-dashoffset support */}
+          {/* Geodesic routes with animated stroke-dashoffset */}
           {routes.map((route) => {
             const geoLine = {
               type: 'LineString' as const,
@@ -195,17 +184,15 @@ export function RealGeoMap({
             const progress = Math.max(0, Math.min(1, route.progress ?? 1))
             return (
               <g key={route.id}>
-                {/* Subtle full preview track */}
                 <path
                   d={d}
                   fill="none"
                   stroke={route.color}
                   strokeOpacity={0.22}
-                  strokeWidth={(route.strokeWidth ?? 3) + 1}
+                  strokeWidth={(route.strokeWidth ?? 3) + 1.2}
                   strokeDasharray="4 6"
                   strokeLinecap="round"
                 />
-                {/* Active animated path using normalized pathLength=100 */}
                 <path
                   d={d}
                   pathLength={100}
@@ -216,14 +203,13 @@ export function RealGeoMap({
                   strokeLinejoin="round"
                   strokeDasharray={route.dashed ? '6 5' : '100'}
                   strokeDashoffset={route.dashed ? 0 : 100 - progress * 100}
-                  filter="url(#yunoGlow)"
                   style={{ transition: 'stroke-dashoffset 550ms cubic-bezier(0.22, 1, 0.36, 1)' }}
                 />
               </g>
             )
           })}
 
-          {/* Optional geodesic connection line (e.g., user pin -> target pin) */}
+          {/* Geodesic connection line */}
           {connectLine && (() => {
             const d = pathGenerator({
               type: 'LineString',
@@ -234,18 +220,18 @@ export function RealGeoMap({
               <path
                 d={d}
                 fill="none"
-                stroke={connectLine.color ?? '#F59E0B'}
-                strokeWidth={2.2}
+                stroke={connectLine.color ?? '#0071E3'}
+                strokeWidth={2.4}
                 strokeDasharray="5 4"
               />
             )
           })()}
 
-          {/* Markers */}
+          {/* Crisp Apple-style Pins & Halo Labels */}
           {markers.map((m) => {
             const pt = projection([m.lon, m.lat])
             if (!pt) return null
-            const color = m.color ?? '#F59E0B'
+            const color = m.color ?? '#0071E3'
             return (
               <g
                 key={m.id}
@@ -259,24 +245,24 @@ export function RealGeoMap({
                 className={onMarkerClick ? 'cursor-pointer' : undefined}
               >
                 {m.pulse && (
-                  <circle r={14} fill={color} opacity={0.22}>
-                    <animate attributeName="r" from="6" to="20" dur="1.8s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" from="0.55" to="0" dur="1.8s" repeatCount="indefinite" />
+                  <circle r={14} fill={color} opacity={0.24}>
+                    <animate attributeName="r" from="6" to="20" dur="2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" from="0.45" to="0" dur="2s" repeatCount="indefinite" />
                   </circle>
                 )}
                 <circle
-                  r={m.active ? 7 : m.muted ? 4 : 5.5}
-                  fill={m.muted ? '#64748B' : color}
-                  stroke="#0B0F19"
-                  strokeWidth={2}
+                  r={m.active ? 7.5 : m.muted ? 4.5 : 6}
+                  fill={m.muted ? '#86868B' : color}
+                  stroke="#FFFFFF"
+                  strokeWidth={2.5}
                 />
-                <g transform="translate(10, 4)">
+                <g transform="translate(11, 4)">
                   <text
-                    className="fill-slate-100 text-[11px] font-semibold"
+                    className="fill-[#1D1D1F] text-[11.5px] font-bold"
                     style={{
                       paintOrder: 'stroke',
-                      stroke: '#070B14',
-                      strokeWidth: 3.5,
+                      stroke: '#FFFFFF',
+                      strokeWidth: 4,
                       strokeLinejoin: 'round',
                       opacity: m.muted ? 0.65 : 1,
                     }}
@@ -285,12 +271,12 @@ export function RealGeoMap({
                   </text>
                   {m.sublabel && (
                     <text
-                      y={12}
-                      className="fill-slate-400 text-[9.5px]"
+                      y={13}
+                      className="fill-[#515154] text-[10px] font-semibold"
                       style={{
                         paintOrder: 'stroke',
-                        stroke: '#070B14',
-                        strokeWidth: 3,
+                        stroke: '#FFFFFF',
+                        strokeWidth: 3.5,
                       }}
                     >
                       {m.sublabel}
@@ -302,13 +288,13 @@ export function RealGeoMap({
           })}
         </svg>
 
-        {/* Zoom controls */}
+        {/* Frosted Apple Zoom Controls */}
         {allowZoomControls && (
-          <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-xl border border-white/10 bg-[#0B0F19]/85 p-1 backdrop-blur-md">
+          <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-2xl border border-black/10 bg-white/85 p-1 shadow-sm backdrop-blur-md">
             <button
               type="button"
               onClick={() => setZoomFactor((z) => Math.min(2.6, Number((z * 1.25).toFixed(2))))}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition hover:bg-white/10 hover:text-white"
+              className="flex h-7 w-7 items-center justify-center rounded-xl text-[#1D1D1F] transition hover:bg-black/5"
               title="Hineinzoomen"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -316,7 +302,7 @@ export function RealGeoMap({
             <button
               type="button"
               onClick={() => setZoomFactor((z) => Math.max(0.75, Number((z / 1.25).toFixed(2))))}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition hover:bg-white/10 hover:text-white"
+              className="flex h-7 w-7 items-center justify-center rounded-xl text-[#1D1D1F] transition hover:bg-black/5"
               title="Herauszoomen"
             >
               <Minus className="h-3.5 w-3.5" />
@@ -325,7 +311,7 @@ export function RealGeoMap({
               <button
                 type="button"
                 onClick={() => setZoomFactor(1)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition hover:bg-white/10 hover:text-white"
+                className="flex h-7 w-7 items-center justify-center rounded-xl text-[#1D1D1F] transition hover:bg-black/5"
                 title="Ansicht zurücksetzen"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -334,14 +320,13 @@ export function RealGeoMap({
           </div>
         )}
 
-        {/* Geodata Attribution */}
-        <div className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-[#0B0F19]/75 px-2 py-0.5 font-mono text-[10px] text-slate-500 backdrop-blur-sm">
-          d3-geo · Natural Earth 50m TopoJSON
+        <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-white/80 px-2.5 py-0.5 font-mono text-[10px] font-medium text-[#6E6E73] backdrop-blur-sm">
+          Natural Earth 50m · d3-geo
         </div>
       </div>
 
       {caption && (
-        <div className="border-t border-white/[0.06] bg-[#0D1322] px-4 py-2 text-xs text-slate-400">
+        <div className="border-t border-black/[0.06] bg-[#FAFAFC] px-4 py-2.5 text-xs font-medium text-[#515154]">
           {caption}
         </div>
       )}

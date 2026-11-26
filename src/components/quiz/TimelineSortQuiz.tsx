@@ -10,7 +10,6 @@ interface Props {
 
 function deterministicShuffle<T>(items: T[]): T[] {
   if (items.length <= 1) return items
-  // Deterministic non-sorted starting arrangement so items always require sorting
   const copy = [...items]
   const rotated = [...copy.slice(1), copy[0]]
   if (rotated.length >= 4) {
@@ -51,8 +50,10 @@ export function TimelineSortQuiz({ card, onComplete }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-400">
-        Ziehe die Karten per Drag-and-Drop (oder über die Pfeile) in die richtige zeitliche Reihenfolge — von <strong className="text-slate-200">1 (zuerst)</strong> bis <strong className="text-slate-200">{ordered.length} (zuletzt)</strong>.
+      <p className="text-xs font-medium text-[#6E6E73]">
+        Ziehe die Karten per Drag-and-Drop (oder mit den Pfeilen) in die richtige Reihenfolge — von{' '}
+        <strong className="text-[#1D1D1F]">1 (zuerst)</strong> bis{' '}
+        <strong className="text-[#1D1D1F]">{ordered.length} (zuletzt)</strong>.
       </p>
 
       <Reorder.Group
@@ -71,28 +72,28 @@ export function TimelineSortQuiz({ card, onComplete }: Props) {
               key={item.id}
               value={item}
               dragListener={!submitted}
-              className={`flex items-center gap-3 rounded-xl border px-3.5 py-3 transition ${
+              className={`flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition ${
                 isExact
-                  ? 'border-emerald-500/45 bg-emerald-500/10'
+                  ? 'border-[#86EFAC] bg-[#F0FDF4]'
                   : isWrong
-                    ? 'border-rose-500/45 bg-rose-500/10'
-                    : 'cursor-grab border-white/10 bg-[#0E1525] hover:border-white/20 active:cursor-grabbing'
+                    ? 'border-[#FCA5A5] bg-[#FEF2F2]'
+                    : 'cursor-grab border-black/[0.08] bg-[#F5F5F7] hover:border-black/20 active:cursor-grabbing'
               }`}
             >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/8 font-mono text-xs font-semibold text-slate-200">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white font-mono text-xs font-bold text-[#1D1D1F] shadow-xs">
                 {idx + 1}
               </span>
-              {!submitted && <GripVertical className="h-4 w-4 shrink-0 text-slate-500" />}
+              {!submitted && <GripVertical className="h-4 w-4 shrink-0 text-[#86868B]" />}
 
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white">{item.label}</p>
-                {item.sublabel && <p className="text-xs text-slate-400">{item.sublabel}</p>}
+                <p className="text-sm font-bold text-[#1D1D1F]">{item.label}</p>
+                {item.sublabel && <p className="text-xs text-[#6E6E73]">{item.sublabel}</p>}
               </div>
 
               {submitted ? (
                 <span
-                  className={`shrink-0 rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold ${
-                    isExact ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 font-mono text-[11px] font-bold ${
+                    isExact ? 'bg-[#DCFCE7] text-[#15803D]' : 'bg-[#FEE2E2] text-[#DC2626]'
                   }`}
                 >
                   {isExact ? 'Korrekt' : `Soll: #${item.order + 1}`}
@@ -103,7 +104,7 @@ export function TimelineSortQuiz({ card, onComplete }: Props) {
                     type="button"
                     disabled={idx === 0}
                     onClick={() => moveItem(idx, -1)}
-                    className="rounded-lg border border-white/10 p-1 text-slate-300 transition hover:bg-white/10 disabled:opacity-25"
+                    className="rounded-xl border border-black/10 bg-white p-1.5 text-[#1D1D1F] transition hover:bg-[#EFEFF4] disabled:opacity-30"
                     aria-label="Nach oben"
                   >
                     <ArrowUp className="h-3.5 w-3.5" />
@@ -112,7 +113,7 @@ export function TimelineSortQuiz({ card, onComplete }: Props) {
                     type="button"
                     disabled={idx === ordered.length - 1}
                     onClick={() => moveItem(idx, 1)}
-                    className="rounded-lg border border-white/10 p-1 text-slate-300 transition hover:bg-white/10 disabled:opacity-25"
+                    className="rounded-xl border border-black/10 bg-white p-1.5 text-[#1D1D1F] transition hover:bg-[#EFEFF4] disabled:opacity-30"
                     aria-label="Nach unten"
                   >
                     <ArrowDown className="h-3.5 w-3.5" />
@@ -129,32 +130,32 @@ export function TimelineSortQuiz({ card, onComplete }: Props) {
           <button
             type="button"
             onClick={handleConfirm}
-            className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400"
+            className="rounded-full bg-[#0071E3] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#0077ED]"
           >
             Reihenfolge prüfen
           </button>
         </div>
       ) : (
         <div
-          className={`rounded-xl border p-4 text-sm ${
+          className={`rounded-2xl border p-4 text-sm ${
             allCorrect
-              ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-100'
-              : 'border-rose-500/35 bg-rose-500/10 text-rose-100'
+              ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#14532D]'
+              : 'border-[#FECACA] bg-[#FEF2F2] text-[#7F1D1D]'
           }`}
         >
-          <div className="flex items-center gap-2 font-semibold">
+          <div className="flex items-center gap-2 font-bold">
             {allCorrect ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
             ) : (
-              <XCircle className="h-4 w-4 text-rose-400" />
+              <XCircle className="h-4 w-4 text-[#DC2626]" />
             )}
             <span>
               {allCorrect
-                ? 'Perfekte Chronologie! Alle Phasen sitzen exakt.'
+                ? 'Perfekte Reihenfolge!'
                 : 'Nicht ganz — schau dir die Soll-Positionen rechts an.'}
             </span>
           </div>
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{card.explanation}</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#3A3A3C]">{card.explanation}</p>
         </div>
       )}
     </div>

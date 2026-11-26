@@ -46,29 +46,29 @@ export function BackupModal({ open, onClose }: BackupModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="editorial-card w-full max-w-md space-y-5 rounded-3xl p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 p-4 backdrop-blur-md">
+      <div className="apple-card w-full max-w-md space-y-5 rounded-[28px] p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Lokaler Speicher & Backup</h2>
-            <p className="text-xs text-slate-400">
-              Fortschritt, Streak, XP & SM-2-Wiederholungsordner sichern.
+            <h2 className="font-apple-display text-lg text-[#1D1D1F]">Speicher &amp; Backup</h2>
+            <p className="text-xs text-[#6E6E73]">
+              Fortschritt, Lernserie, XP &amp; Wiederholungsordner sichern.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F2F2F7] text-[#515154] hover:bg-[#E5E5EA]"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="grid gap-3">
+        <div className="grid gap-2.5">
           <button
             type="button"
             onClick={handleDownload}
-            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400"
+            className="flex items-center justify-center gap-2 rounded-full bg-[#0071E3] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0077ED]"
           >
             <Download className="h-4 w-4" />
             <span>JSON-Backup exportieren</span>
@@ -77,7 +77,7 @@ export function BackupModal({ open, onClose }: BackupModalProps) {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+            className="flex items-center justify-center gap-2 rounded-full bg-[#F2F2F7] px-4 py-3 text-sm font-bold text-[#1D1D1F] transition hover:bg-[#E5E5EA]"
           >
             <Upload className="h-4 w-4" />
             <span>JSON-Backup importieren</span>
@@ -93,10 +93,10 @@ export function BackupModal({ open, onClose }: BackupModalProps) {
 
         {status && (
           <div
-            className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs ${
+            className={`flex items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-xs font-semibold ${
               status.type === 'ok'
-                ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200'
-                : 'border-rose-500/35 bg-rose-500/10 text-rose-200'
+                ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#15803D]'
+                : 'border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]'
             }`}
           >
             <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -104,24 +104,24 @@ export function BackupModal({ open, onClose }: BackupModalProps) {
           </div>
         )}
 
-        <div className="border-t border-white/[0.08] pt-4">
+        <div className="border-t border-black/[0.06] pt-4">
           {!confirmReset ? (
             <button
               type="button"
               onClick={() => setConfirmReset(true)}
-              className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#DC2626] hover:underline"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Gesamten Lernstand zurücksetzen</span>
             </button>
           ) : (
-            <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs">
-              <span className="text-rose-200">Wirklich alles löschen?</span>
+            <div className="flex items-center justify-between gap-2 rounded-2xl bg-[#FEF2F2] p-3 text-xs">
+              <span className="font-semibold text-[#7F1D1D]">Wirklich alles löschen?</span>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setConfirmReset(false)}
-                  className="rounded-lg bg-white/10 px-2.5 py-1 text-slate-200"
+                  className="rounded-full bg-white px-3 py-1 font-bold text-[#1D1D1F]"
                 >
                   Abbrechen
                 </button>
@@ -132,9 +132,9 @@ export function BackupModal({ open, onClose }: BackupModalProps) {
                     setConfirmReset(false)
                     setStatus({ type: 'ok', text: 'Lernstand wurde zurückgesetzt.' })
                   }}
-                  className="rounded-lg bg-rose-500 px-2.5 py-1 font-semibold text-white"
+                  className="rounded-full bg-[#DC2626] px-3 py-1 font-bold text-white"
                 >
-                  Ja, löschen
+                  Löschen
                 </button>
               </div>
             </div>

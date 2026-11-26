@@ -1,6 +1,6 @@
 import { CheckCircle2, Play, Volume2, XCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import * as Tone from 'tone'
+import { playMelody, stopAllAudio, toneDurationToSeconds } from '../../lib/audioEngine'
 import type { AudioMatchQuizCard, QuizResult } from '../../types/yuno'
 import { SmartVideoPlayer } from '../media/SmartVideoPlayer'
 
@@ -13,31 +13,30 @@ export function AudioMatchQuiz({ card, onComplete }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [isPlayingTone, setIsPlayingTone] = useState(false)
-  const synthRef = useRef<Tone.PolySynth | null>(null)
+  const cancelRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     return () => {
-      synthRef.current?.dispose()
-      synthRef.current = null
+      cancelRef.current?.()
+      stopAllAudio()
     }
   }, [])
 
-  const playToneExample = async () => {
+  const playToneExample = () => {
     if (card.audio.mode !== 'tone') return
-    await Tone.start()
-    if (!synthRef.current) {
-      synthRef.current = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-      }).toDestination()
-    }
+    cancelRef.current?.()
     setIsPlayingTone(true)
-    const now = Tone.now()
-    let maxOffset = 0
-    for (const n of card.audio.notes) {
-      synthRef.current.triggerAttackRelease(n.pitch, n.duration, now + n.timeOffset)
-      maxOffset = Math.max(maxOffset, n.timeOffset)
-    }
-    window.setTimeout(() => setIsPlayingTone(false), (maxOffset + 0.6) * 1000)
+    const { cancel } = playMelody(
+      card.audio.notes.map((n) => ({
+        pitch: n.pitch,
+        durationSec: toneDurationToSeconds(n.duration),
+        offsetSec: n.timeOffset,
+      })),
+      (idx) => {
+        if (idx === null) setIsPlayingTone(false)
+      },
+    )
+    cancelRef.current = cancel
   }
 
   const handleConfirm = () => {
@@ -55,20 +54,20 @@ export function AudioMatchQuiz({ card, onComplete }: Props) {
   return (
     <div className="space-y-4">
       {card.audio.mode === 'tone' ? (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet-500/25 bg-violet-500/10 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-black/[0.08] bg-[#F5F5F7] p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/25 text-violet-200">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0071E3] text-white">
               <Volume2 className={`h-5 w-5 ${isPlayingTone ? 'animate-pulse' : ''}`} />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">{card.audio.label}</p>
-              <p className="text-xs text-slate-300">Live-Klangbeispiel via Tone.js</p>
+              <p className="text-sm font-bold text-[#1D1D1F]">{card.audio.label}</p>
+              <p className="text-xs text-[#6E6E73]">Live-Klangbeispiel</p>
             </div>
           </div>
           <button
             type="button"
             onClick={playToneExample}
-            className="inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-violet-400"
+            className="inline-flex items-center gap-2 rounded-full bg-[#1D1D1F] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#3A3A3C]"
           >
             <Play className="h-3.5 w-3.5 fill-current" />
             {isPlayingTone ? 'Spielt ab…' : 'Hörbeispiel abspielen'}
@@ -96,18 +95,18 @@ export function AudioMatchQuiz({ card, onComplete }: Props) {
               type="button"
               disabled={submitted}
               onClick={() => setSelectedId(opt.id)}
-              className={`rounded-xl border p-3.5 text-left transition ${
+              className={`rounded-2xl border p-4 text-left transition ${
                 isRightOption
-                  ? 'border-emerald-500/55 bg-emerald-500/15'
+                  ? 'border-[#86EFAC] bg-[#F0FDF4]'
                   : isWrongChoice
-                    ? 'border-rose-500/55 bg-rose-500/15'
+                    ? 'border-[#FCA5A5] bg-[#FEF2F2]'
                     : isSelected
-                      ? 'border-indigo-400 bg-indigo-500/15'
-                      : 'border-white/10 bg-[#0E1525] hover:border-white/25'
+                      ? 'border-[#0071E3] bg-[#E8F2FC]'
+                      : 'border-black/[0.08] bg-[#F5F5F7] hover:border-black/20'
               }`}
             >
-              <p className="text-sm font-semibold text-white">{opt.label}</p>
-              {opt.description && <p className="mt-0.5 text-xs text-slate-400">{opt.description}</p>}
+              <p className="text-sm font-bold text-[#1D1D1F]">{opt.label}</p>
+              {opt.description && <p className="mt-0.5 text-xs text-[#6E6E73]">{opt.description}</p>}
             </button>
           )
         })}
@@ -119,28 +118,30 @@ export function AudioMatchQuiz({ card, onComplete }: Props) {
             type="button"
             disabled={!selectedId}
             onClick={handleConfirm}
-            className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:opacity-40"
+            className="rounded-full bg-[#0071E3] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#0077ED] disabled:opacity-40"
           >
             Antwort prüfen
           </button>
         </div>
       ) : (
         <div
-          className={`rounded-xl border p-4 text-sm ${
+          className={`rounded-2xl border p-4 text-sm ${
             isCorrect
-              ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-100'
-              : 'border-rose-500/35 bg-rose-500/10 text-rose-100'
+              ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#14532D]'
+              : 'border-[#FECACA] bg-[#FEF2F2] text-[#7F1D1D]'
           }`}
         >
-          <div className="flex items-center gap-2 font-semibold">
+          <div className="flex items-center gap-2 font-bold">
             {isCorrect ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
             ) : (
-              <XCircle className="h-4 w-4 text-rose-400" />
+              <XCircle className="h-4 w-4 text-[#DC2626]" />
             )}
-            <span>{isCorrect ? 'Hervorragendes Gehör!' : 'Nicht ganz — die richtige Zuordnung ist grün markiert.'}</span>
+            <span>
+              {isCorrect ? 'Hervorragendes Gehör!' : 'Nicht ganz — die richtige Antwort ist grün markiert.'}
+            </span>
           </div>
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{card.explanation}</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#3A3A3C]">{card.explanation}</p>
         </div>
       )}
     </div>

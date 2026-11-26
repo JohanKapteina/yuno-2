@@ -3,11 +3,8 @@ import { useEffect, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 
 export interface SmartMediaImageProps {
-  /** Wikipedia article title for live Wikimedia REST API loading */
   wikiTitle?: string
-  /** Wikipedia language edition (defaults to 'de') */
   wikiLang?: 'de' | 'en'
-  /** Optional verified direct upload.wikimedia.org URL */
   src?: string
   alt: string
   caption?: string
@@ -16,7 +13,6 @@ export interface SmartMediaImageProps {
   aspectClass?: string
   objectPosition?: string
   className?: string
-  /** Optional interactive overlay rendered inside the image container (e.g. hotspots) */
   overlay?: ReactNode
   onImageClick?: (coords: { xPct: number; yPct: number }) => void
 }
@@ -115,25 +111,25 @@ export function SmartMediaImage({
   }
 
   return (
-    <figure className={`overflow-hidden rounded-2xl border border-white/10 bg-[#0E1525] ${className}`}>
+    <figure
+      className={`overflow-hidden rounded-3xl border border-black/[0.08] bg-white shadow-[0_8px_28px_-14px_rgba(0,0,0,0.08)] ${className}`}
+    >
       <div
         onClick={handleContainerClick}
-        className={`relative w-full overflow-hidden bg-[#0A101D] ${aspectClass} ${onImageClick ? 'cursor-crosshair select-none' : ''}`}
+        className={`relative w-full overflow-hidden bg-[#EFEFF4] ${aspectClass} ${onImageClick ? 'cursor-crosshair select-none' : ''}`}
       >
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#0E1525] text-slate-400">
-            <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
-            <span className="text-xs tracking-wide uppercase">Lade Wikimedia-Archivbild…</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#F2F2F7] text-[#6E6E73]">
+            <Loader2 className="h-6 w-6 animate-spin text-[#0071E3]" />
+            <span className="text-xs font-semibold">Lade Archivbild…</span>
           </div>
         )}
 
         {!loading && errored && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#11192D] to-[#0B0F19] p-6 text-center">
-            <ImageOff className="h-7 w-7 text-slate-500" />
-            <p className="text-sm font-medium text-slate-300">{alt}</p>
-            <p className="text-xs text-slate-500">
-              Medienquelle derzeit offline oder blockiert ({credit})
-            </p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#F2F2F7] p-6 text-center">
+            <ImageOff className="h-7 w-7 text-[#86868B]" />
+            <p className="text-sm font-semibold text-[#1D1D1F]">{alt}</p>
+            <p className="text-xs text-[#6E6E73]">Bildquelle derzeit offline ({credit})</p>
           </div>
         )}
 
@@ -145,7 +141,6 @@ export function SmartMediaImage({
             referrerPolicy="no-referrer"
             onLoad={() => setLoading(false)}
             onError={() => {
-              // Automatic fallback: if direct src failed and wikiTitle exists, retry via REST API
               if (src && wikiTitle && resolvedUrl === src) {
                 const endpoint = `https://${wikiLang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`
                 fetch(endpoint)
@@ -171,16 +166,16 @@ export function SmartMediaImage({
       </div>
 
       {(caption || credit) && (
-        <figcaption className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] bg-[#0D1322] px-4 py-2.5 text-xs text-slate-400">
-          <span className="leading-relaxed text-slate-300">{caption ?? alt}</span>
-          <span className="flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
-            <span>Quelle: {credit}</span>
+        <figcaption className="flex flex-wrap items-center justify-between gap-2 border-t border-black/[0.06] bg-[#FAFAFC] px-4 py-2.5 text-xs text-[#6E6E73]">
+          <span className="font-medium leading-relaxed text-[#3A3A3C]">{caption ?? alt}</span>
+          <span className="flex items-center gap-1.5 font-mono text-[11px] text-[#86868B]">
+            <span>{credit}</span>
             {resolvedSourceUrl && (
               <a
                 href={resolvedSourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-0.5 text-indigo-400 transition hover:text-indigo-300"
+                className="inline-flex items-center gap-0.5 text-[#0071E3] transition hover:underline"
                 title="Originalquelle öffnen"
               >
                 <ExternalLink className="h-3 w-3" />

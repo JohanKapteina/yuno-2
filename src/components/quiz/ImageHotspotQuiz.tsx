@@ -29,7 +29,7 @@ export function ImageHotspotQuiz({ card, onComplete }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-xs text-sky-300">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-[#0071E3]">
         <Crosshair className="h-3.5 w-3.5" />
         <span>Klicke direkt auf das gesuchte Merkmal im Bild.</span>
       </div>
@@ -52,8 +52,8 @@ export function ImageHotspotQuiz({ card, onComplete }: Props) {
                 className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
               >
                 <span
-                  className={`block h-5 w-5 rounded-full border-2 border-white shadow-lg ${
-                    submitted ? (isHit ? 'bg-emerald-500' : 'bg-rose-500') : 'bg-sky-400'
+                  className={`block h-6 w-6 rounded-full border-3 border-white shadow-lg ${
+                    submitted ? (isHit ? 'bg-[#16A34A]' : 'bg-[#DC2626]') : 'bg-[#0071E3]'
                   }`}
                 />
               </div>
@@ -66,9 +66,9 @@ export function ImageHotspotQuiz({ card, onComplete }: Props) {
                   width: `${card.target.radiusPct * 2}%`,
                   height: `${card.target.radiusPct * 2}%`,
                 }}
-                className="pointer-events-none absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-emerald-400 bg-emerald-400/20"
+                className="pointer-events-none absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-[#16A34A] bg-[#16A34A]/20"
               >
-                <span className="rounded-md bg-[#0B0F19]/90 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                <span className="rounded-full bg-white/95 px-2.5 py-0.5 text-[11px] font-bold text-[#15803D] shadow-sm">
                   {card.target.label}
                 </span>
               </div>
@@ -78,32 +78,32 @@ export function ImageHotspotQuiz({ card, onComplete }: Props) {
       />
 
       {!submitted ? (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-slate-400">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-xs font-medium text-[#6E6E73]">
             {clickPos ? 'Markierung platziert — bereit zum Prüfen.' : card.hint ?? 'Klicke auf die passende Stelle.'}
           </span>
           <button
             type="button"
             disabled={!clickPos}
             onClick={handleConfirm}
-            className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:opacity-40"
+            className="rounded-full bg-[#0071E3] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#0077ED] disabled:opacity-40"
           >
             Markierung prüfen
           </button>
         </div>
       ) : (
         <div
-          className={`rounded-xl border p-4 text-sm ${
+          className={`rounded-2xl border p-4 text-sm ${
             isHit
-              ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-100'
-              : 'border-rose-500/35 bg-rose-500/10 text-rose-100'
+              ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#14532D]'
+              : 'border-[#FECACA] bg-[#FEF2F2] text-[#7F1D1D]'
           }`}
         >
-          <div className="flex items-center gap-2 font-semibold">
+          <div className="flex items-center gap-2 font-bold">
             {isHit ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
             ) : (
-              <XCircle className="h-4 w-4 text-rose-400" />
+              <XCircle className="h-4 w-4 text-[#DC2626]" />
             )}
             <span>
               {isHit
@@ -111,7 +111,7 @@ export function ImageHotspotQuiz({ card, onComplete }: Props) {
                 : `Knapp daneben — der grüne Kreis markiert „${card.target.label}“.`}
             </span>
           </div>
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{card.explanation}</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#3A3A3C]">{card.explanation}</p>
         </div>
       )}
     </div>

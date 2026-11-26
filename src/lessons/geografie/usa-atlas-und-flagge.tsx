@@ -12,6 +12,7 @@ import {
   Plane,
   Ruler,
   Sparkles,
+  Square,
   Volume2,
   Waves,
 } from 'lucide-react'
@@ -28,15 +29,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import * as Tone from 'tone'
 import { RealGeoMap } from '../../components/geo/RealGeoMap'
 import type { GeoMarker, GeoRoute } from '../../components/geo/RealGeoMap'
 import { SmartMediaImage } from '../../components/media/SmartMediaImage'
 import { SmartVideoPlayer } from '../../components/media/SmartVideoPlayer'
+import { STAR_SPANGLED_OPENING, playMelody, stopAllAudio } from '../../lib/audioEngine'
 import type { LessonDefinition } from '../../types/yuno'
 
 /* -------------------------------------------------------------------------- */
-/*  SCREEN 1 (Option A): Echter Nordamerika-Atlas mit Layer-Scanner            */
+/*  SCREEN 1: Echter Nordamerika-Atlas mit Layer-Scanner                       */
 /* -------------------------------------------------------------------------- */
 
 type AtlasLayer = 'nachbarn' | 'ozeane' | 'sonderstaaten'
@@ -60,43 +61,43 @@ const LAYER_CONFIG: Record<
     center: [-98, 40],
     scale: 560,
     markers: [
-      { id: 'canada', label: 'Kanada (Norden)', lon: -102, lat: 55, color: '#38BDF8' },
-      { id: 'mexico', label: 'Mexiko (Süden)', lon: -102, lat: 23.5, color: '#F97316' },
-      { id: 'gulf', label: 'Golf von Mexiko', lon: -90, lat: 25.5, color: '#0EA5E9', muted: false },
-      { id: 'dc', label: 'Washington, D.C.', sublabel: 'Hauptstadt', lon: -77.0369, lat: 38.9072, color: '#F59E0B', pulse: true, active: true },
-      { id: 'nyc', label: 'New York City', sublabel: '~8,4 Mio. Einw.', lon: -74.006, lat: 40.7128, color: '#EC4899' },
+      { id: 'canada', label: 'Kanada (Norden)', lon: -102, lat: 55, color: '#0071E3' },
+      { id: 'mexico', label: 'Mexiko (Süden)', lon: -102, lat: 23.5, color: '#D97706' },
+      { id: 'gulf', label: 'Golf von Mexiko', lon: -90, lat: 25.5, color: '#0369A1' },
+      { id: 'dc', label: 'Washington, D.C.', sublabel: 'Hauptstadt', lon: -77.0369, lat: 38.9072, color: '#DC2626', pulse: true, active: true },
+      { id: 'nyc', label: 'New York City', sublabel: '~8,4 Mio. Einw.', lon: -74.006, lat: 40.7128, color: '#1D1D1F' },
     ],
     wikiTitle: 'United_States_Capitol',
-    wikiCaption: 'Das US-Kapitol in Washington, D.C. — dem politischen Zentrum und der Hauptstadt der USA.',
+    wikiCaption: 'Das US-Kapitol in Washington, D.C. — der Hauptstadt der Vereinigten Staaten.',
   },
   ozeane: {
     title: 'Brücke zwischen zwei Ozeanen',
     summary:
-      'Zwischen Atlantik im Osten und Pazifik im Westen erstrecken sich die USA über einen ganzen Kontinent. Zwei gewaltige Gebirgszüge rahmen das Landesinnere ein.',
+      'Zwischen Atlantik im Osten und Pazifik im Westen erstrecken sich die USA über einen ganzen Kontinent. Im Westen liegen die Rocky Mountains, im Osten die Appalachen.',
     center: [-96, 39],
     scale: 610,
     markers: [
-      { id: 'pacific', label: 'Pazifischer Ozean', sublabel: 'Westküste', lon: -129, lat: 37, color: '#38BDF8', pulse: true },
-      { id: 'atlantic', label: 'Atlantischer Ozean', sublabel: 'Ostküste', lon: -66, lat: 37, color: '#38BDF8', pulse: true },
-      { id: 'rockies', label: 'Rocky Mountains', sublabel: 'Westen', lon: -109, lat: 42.5, color: '#F59E0B', active: true },
-      { id: 'appalachians', label: 'Appalachen', sublabel: 'Osten', lon: -81.5, lat: 37.5, color: '#10B981', active: true },
+      { id: 'pacific', label: 'Pazifik', sublabel: 'Westküste', lon: -129, lat: 37, color: '#0071E3', pulse: true },
+      { id: 'atlantic', label: 'Atlantik', sublabel: 'Ostküste', lon: -66, lat: 37, color: '#0071E3', pulse: true },
+      { id: 'rockies', label: 'Rocky Mountains', sublabel: 'Westen', lon: -109, lat: 42.5, color: '#B45309', active: true },
+      { id: 'appalachians', label: 'Appalachen', sublabel: 'Osten', lon: -81.5, lat: 37.5, color: '#0F766E', active: true },
     ],
     wikiTitle: 'Rocky_Mountains',
-    wikiCaption: 'Die Rocky Mountains (hier Maroon Bells, Colorado) bilden das gewaltige Hochgebirge im Westen.',
+    wikiCaption: 'Die Rocky Mountains (Maroon Bells, Colorado) prägen den Westen der USA.',
   },
   sonderstaaten: {
     title: '50 Bundesstaaten — inkl. Alaska & Hawaii',
     summary:
-      'Zwei der 50 Bundesstaaten liegen weit abseits des Kernlands: Alaska im hohen Nordwesten ist der flächenmäßig größte Bundesstaat, Hawaii bildet als Pazifik-Inselgruppe den südwestlichsten.',
+      'Zwei der 50 Bundesstaaten liegen abseits des Kernlands: Alaska im Nordwesten ist der flächenmäßig größte Bundesstaat, Hawaii bildet als Pazifik-Inselgruppe den südwestlichsten.',
     center: [-126, 44],
     scale: 390,
     markers: [
-      { id: 'alaska', label: 'Alaska', sublabel: 'Größter Bundesstaat · Denali 6.190 m', lon: -151.0, lat: 63.07, color: '#14B8A6', pulse: true, active: true },
-      { id: 'hawaii', label: 'Hawaii', sublabel: 'Pazifik-Inselgruppe (Südwesten)', lon: -155.5, lat: 19.9, color: '#F59E0B', pulse: true, active: true },
-      { id: 'dc-ref', label: 'Washington, D.C.', lon: -77.04, lat: 38.9, color: '#64748B', muted: true },
+      { id: 'alaska', label: 'Alaska', sublabel: 'Größter Staat · Denali 6.190 m', lon: -151.0, lat: 63.07, color: '#0F766E', pulse: true, active: true },
+      { id: 'hawaii', label: 'Hawaii', sublabel: 'Pazifik (Südwesten)', lon: -155.5, lat: 19.9, color: '#D97706', pulse: true, active: true },
+      { id: 'dc-ref', label: 'Washington, D.C.', lon: -77.04, lat: 38.9, color: '#86868B', muted: true },
     ],
     wikiTitle: 'Nā_Pali_Coast_State_Park',
-    wikiCaption: 'Hawaii (hier die Nā-Pali-Küste auf Kauaʻi) liegt als vulkanische Inselgruppe mitten im Pazifik.',
+    wikiCaption: 'Hawaii (Nā-Pali-Küste auf Kauaʻi) liegt als Inselgruppe mitten im Pazifik.',
   },
 }
 
@@ -116,7 +117,7 @@ function Screen1NorthAmericaAtlas() {
               [-81.5, 37.8],
               [-74.0, 40.7],
             ],
-            color: '#14B8A6',
+            color: '#0071E3',
             progress: 1,
             strokeWidth: 2.8,
             dashed: true,
@@ -130,7 +131,7 @@ function Screen1NorthAmericaAtlas() {
                 [-122.3, 47.6],
                 [-151.0, 63.07],
               ],
-              color: '#14B8A6',
+              color: '#0F766E',
               dashed: true,
               strokeWidth: 2.2,
             },
@@ -140,7 +141,7 @@ function Screen1NorthAmericaAtlas() {
                 [-118.2, 34.0],
                 [-155.5, 19.9],
               ],
-              color: '#F59E0B',
+              color: '#D97706',
               dashed: true,
               strokeWidth: 2.2,
             },
@@ -149,7 +150,6 @@ function Screen1NorthAmericaAtlas() {
 
   return (
     <div className="space-y-4">
-      {/* Layer Switcher */}
       <div className="flex flex-wrap items-center gap-2">
         {(
           [
@@ -165,10 +165,10 @@ function Screen1NorthAmericaAtlas() {
               key={tab.id}
               type="button"
               onClick={() => setLayer(tab.id)}
-              className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition ${
                 active
-                  ? 'border-teal-400 bg-teal-500/15 text-teal-200'
-                  : 'border-white/10 bg-[#131B2E] text-slate-400 hover:border-white/25 hover:text-white'
+                  ? 'bg-[#1D1D1F] text-white shadow-xs'
+                  : 'bg-white text-[#515154] ring-1 ring-black/[0.08] hover:bg-[#EFEFF4] hover:text-[#1D1D1F]'
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -197,13 +197,15 @@ function Screen1NorthAmericaAtlas() {
             aspectClass="aspect-[16/10]"
           />
 
-          <div className="editorial-card rounded-2xl p-4">
-            <div className="flex items-center gap-2 font-mono text-[11px] font-semibold text-teal-400 uppercase">
+          <div className="apple-card rounded-3xl p-5">
+            <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#0071E3] uppercase">
               <Layers className="h-3.5 w-3.5" />
               <span>Aktiver Atlas-Layer</span>
             </div>
-            <h3 className="mt-1 text-base font-semibold text-white">{cfg.title}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-slate-300">{cfg.summary}</p>
+            <h3 className="font-apple-display mt-1 text-lg text-[#1D1D1F]">{cfg.title}</h3>
+            <p className="mt-1.5 text-xs leading-relaxed font-medium text-[#515154]">
+              {cfg.summary}
+            </p>
           </div>
         </div>
       </div>
@@ -212,7 +214,7 @@ function Screen1NorthAmericaAtlas() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  SCREEN 2 (Option A + B): Globale Superlative (Rang 3 & 3) + Größen-Labor   */
+/*  SCREEN 2: Globale Superlative (Rang 3 & 3) + Alaska-Größenlabor            */
 /* -------------------------------------------------------------------------- */
 
 const AREA_RANKING = [
@@ -233,8 +235,8 @@ const POP_RANKING = [
 
 const ALASKA_COMPARISONS = [
   { id: 'de', label: 'Deutschland', km2: 357588, factor: '4,8× größer' },
-  { id: 'fr', label: 'Frankreich (Festland)', km2: 551695, factor: '3,1× größer' },
-  { id: 'tx', label: 'Texas (#2 der USA)', km2: 695662, factor: '2,5× größer' },
+  { id: 'fr', label: 'Frankreich', km2: 551695, factor: '3,1× größer' },
+  { id: 'tx', label: 'Texas (#2)', km2: 695662, factor: '2,5× größer' },
 ]
 
 function Screen2SuperlativesLab() {
@@ -247,165 +249,169 @@ function Screen2SuperlativesLab() {
   const compareWidthPct = Math.round((compareTarget.km2 / alaskaKm2) * 100)
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
-        {/* Global Rank 3 & 3 Interactive Chart */}
-        <div className="editorial-card space-y-4 rounded-2xl p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <span className="font-mono text-[11px] font-semibold text-teal-400 uppercase">
-                Weltrangliste · Doppel-Bronze
-              </span>
-              <h3 className="text-base font-semibold text-white">
-                {metric === 'population'
-                  ? 'Drittgrößtes Land nach Einwohnern (~340 Mio.)'
-                  : 'Drittgrößtes Land der Erde nach Fläche (~9,8 Mio. km²)'}
-              </h3>
-            </div>
-
-            <div className="flex rounded-xl border border-white/10 bg-[#0B0F19] p-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setMetric('population')}
-                className={`rounded-lg px-3 py-1 font-semibold transition ${
-                  metric === 'population' ? 'bg-teal-500 text-[#0B0F19]' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Einwohner
-              </button>
-              <button
-                type="button"
-                onClick={() => setMetric('area')}
-                className={`rounded-lg px-3 py-1 font-semibold transition ${
-                  metric === 'area' ? 'bg-teal-500 text-[#0B0F19]' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Fläche
-              </button>
-            </div>
+    <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
+      <div className="apple-card space-y-5 rounded-3xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span className="font-mono text-[11px] font-bold text-[#0071E3] uppercase">
+              Weltrangliste · Platz 3 &amp; 3
+            </span>
+            <h3 className="font-apple-display text-lg text-[#1D1D1F]">
+              {metric === 'population'
+                ? 'Drittgrößtes Land nach Einwohnern (~340 Mio.)'
+                : 'Drittgrößtes Land nach Fläche (~9,8 Mio. km²)'}
+            </h3>
           </div>
 
-          <div className="h-52 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 18, left: 8, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
-                <XAxis
-                  type="number"
-                  tick={{ fill: '#94A3B8', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={92}
-                  tick={{ fill: '#E2E8F0', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-                  formatter={(v) => [
-                    metric === 'population' ? `${v} Mio. Menschen` : `${v} Mio. km²`,
-                    metric === 'population' ? 'Bevölkerung' : 'Fläche',
-                  ]}
-                  contentStyle={{
-                    backgroundColor: '#0B0F19',
-                    borderColor: 'rgba(255,255,255,0.12)',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                  }}
-                />
-                <Bar dataKey="value" radius={[0, 8, 8, 0]}>
-                  {chartData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.highlight ? '#14B8A6' : '#334155'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Alaska Size Overlay Labor (Option B) */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0B0F19] p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-300">
-                <Ruler className="h-3.5 w-3.5" />
-                Alaska-Größenlabor (Größter US-Bundesstaat)
-              </span>
-              <span className="font-mono text-xs font-bold text-teal-300">
-                Alaska ist {compareTarget.factor}
-              </span>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-slate-300">
-                <span>Alaska (1,72 Mio. km²)</span>
-                <span className="font-mono text-teal-300">100%</span>
-              </div>
-              <div className="h-3 w-full rounded-full bg-teal-500/80" />
-
-              <div className="flex items-center justify-between text-[11px] text-slate-300">
-                <span>{compareTarget.label} ({(compareTarget.km2 / 1000).toFixed(0)} Tsd. km²)</span>
-                <span className="font-mono text-amber-300">{compareWidthPct}%</span>
-              </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-white/8">
-                <motion.div
-                  animate={{ width: `${compareWidthPct}%` }}
-                  transition={{ duration: 0.45 }}
-                  className="h-full rounded-full bg-amber-400"
-                />
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {ALASKA_COMPARISONS.map((c, idx) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setCompareIdx(idx)}
-                  className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition ${
-                    compareIdx === idx
-                      ? 'border-amber-400 bg-amber-500/15 text-amber-200'
-                      : 'border-white/10 bg-[#131B2E] text-slate-400 hover:text-white'
-                  }`}
-                >
-                  vs. {c.label}
-                </button>
-              ))}
-            </div>
+          <div className="flex rounded-full bg-[#EFEFF4] p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setMetric('population')}
+              className={`rounded-full px-3.5 py-1 font-bold transition ${
+                metric === 'population'
+                  ? 'bg-white text-[#1D1D1F] shadow-xs'
+                  : 'text-[#6E6E73] hover:text-[#1D1D1F]'
+              }`}
+            >
+              Einwohner
+            </button>
+            <button
+              type="button"
+              onClick={() => setMetric('area')}
+              className={`rounded-full px-3.5 py-1 font-bold transition ${
+                metric === 'area'
+                  ? 'bg-white text-[#1D1D1F] shadow-xs'
+                  : 'text-[#6E6E73] hover:text-[#1D1D1F]'
+              }`}
+            >
+              Fläche
+            </button>
           </div>
         </div>
 
-        {/* NYC vs Washington D.C. */}
-        <div className="flex flex-col justify-between gap-4">
-          <SmartMediaImage
-            wikiTitle="New_York_City"
-            wikiLang="en"
-            alt="Skyline von New York City mit dem Empire State Building"
-            caption="New York City: Mit ca. 8,4 Mio. Einwohnern die größte Stadt der USA — aber NICHT die Hauptstadt."
-            credit="Wikimedia Commons"
-            aspectClass="aspect-[16/10]"
-          />
+        <div className="h-52 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 18, left: 8, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
+              <XAxis type="number" tick={{ fill: '#6E6E73', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={94}
+                tick={{ fill: '#1D1D1F', fontSize: 11, fontWeight: 700 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                cursor={{ fill: 'rgba(0,0,0,0.03)' }}
+                formatter={(v) => [
+                  metric === 'population' ? `${v} Mio. Menschen` : `${v} Mio. km²`,
+                  metric === 'population' ? 'Bevölkerung' : 'Fläche',
+                ]}
+                contentStyle={{
+                  backgroundColor: '#FFFFFF',
+                  borderColor: 'rgba(0,0,0,0.08)',
+                  borderRadius: '14px',
+                  fontSize: '12px',
+                  color: '#1D1D1F',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+                }}
+              />
+              <Bar dataKey="value" radius={[0, 8, 8, 0]}>
+                {chartData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.highlight ? '#0071E3' : '#D1D1D6'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
-          <div className="editorial-card grid grid-cols-2 gap-3 rounded-2xl p-4">
-            <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3">
-              <span className="font-mono text-[10px] font-semibold text-amber-300 uppercase">
-                Hauptstadt
-              </span>
-              <p className="mt-1 text-sm font-bold text-white">Washington, D.C.</p>
-              <p className="mt-0.5 text-[11px] text-slate-300">
-                Regierungssitz (Weißes Haus &amp; Kapitol)
-              </p>
+        {/* Alaska Size Comparison Lab */}
+        <div className="rounded-2xl bg-[#F5F5F7] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1D1D1F]">
+              <Ruler className="h-3.5 w-3.5 text-[#0071E3]" />
+              Alaska-Größenlabor (Größter US-Bundesstaat)
+            </span>
+            <span className="font-mono text-xs font-bold text-[#0071E3]">
+              Alaska ist {compareTarget.factor}
+            </span>
+          </div>
+
+          <div className="mt-3 space-y-2.5">
+            <div>
+              <div className="mb-1 flex justify-between text-[11px] font-semibold text-[#1D1D1F]">
+                <span>Alaska (1,72 Mio. km²)</span>
+                <span className="font-mono text-[#0071E3]">100%</span>
+              </div>
+              <div className="h-3 w-full rounded-full bg-[#0071E3]" />
             </div>
-            <div className="rounded-xl border border-pink-400/30 bg-pink-500/10 p-3">
-              <span className="font-mono text-[10px] font-semibold text-pink-300 uppercase">
-                Größte Stadt
-              </span>
-              <p className="mt-1 text-sm font-bold text-white">New York City</p>
-              <p className="mt-0.5 text-[11px] text-slate-300">
-                ~8,4 Mio. Einwohner an der Ostküste
-              </p>
+
+            <div>
+              <div className="mb-1 flex justify-between text-[11px] font-semibold text-[#515154]">
+                <span>
+                  {compareTarget.label} ({(compareTarget.km2 / 1000).toFixed(0)} Tsd. km²)
+                </span>
+                <span className="font-mono">{compareWidthPct}%</span>
+              </div>
+              <div className="h-3 w-full overflow-hidden rounded-full bg-[#E5E5EA]">
+                <motion.div
+                  animate={{ width: `${compareWidthPct}%` }}
+                  transition={{ duration: 0.45 }}
+                  className="h-full rounded-full bg-[#1D1D1F]"
+                />
+              </div>
             </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {ALASKA_COMPARISONS.map((c, idx) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCompareIdx(idx)}
+                className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
+                  compareIdx === idx
+                    ? 'bg-[#1D1D1F] text-white'
+                    : 'bg-white text-[#515154] ring-1 ring-black/[0.08] hover:text-[#1D1D1F]'
+                }`}
+              >
+                vs. {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* NYC vs Washington D.C. */}
+      <div className="flex flex-col justify-between gap-4">
+        <SmartMediaImage
+          wikiTitle="New_York_City"
+          wikiLang="en"
+          alt="Skyline von New York City mit dem Empire State Building"
+          caption="New York City: Mit ca. 8,4 Mio. Einwohnern die größte Stadt der USA — aber nicht die Hauptstadt."
+          credit="Wikimedia Commons"
+          aspectClass="aspect-[16/10]"
+        />
+
+        <div className="apple-card grid grid-cols-2 gap-3 rounded-3xl p-4">
+          <div className="rounded-2xl bg-[#F5F5F7] p-4">
+            <span className="font-mono text-[10px] font-bold text-[#0071E3] uppercase">
+              Hauptstadt
+            </span>
+            <p className="font-apple-display mt-1 text-base text-[#1D1D1F]">Washington, D.C.</p>
+            <p className="mt-0.5 text-[11px] font-medium text-[#6E6E73]">
+              Regierungssitz (Kapitol &amp; Weißes Haus)
+            </p>
+          </div>
+          <div className="rounded-2xl bg-[#F5F5F7] p-4">
+            <span className="font-mono text-[10px] font-bold text-[#D97706] uppercase">
+              Größte Stadt
+            </span>
+            <p className="font-apple-display mt-1 text-base text-[#1D1D1F]">New York City</p>
+            <p className="mt-0.5 text-[11px] font-medium text-[#6E6E73]">
+              ~8,4 Mio. Einwohner an der Ostküste
+            </p>
           </div>
         </div>
       </div>
@@ -414,7 +420,7 @@ function Screen2SuperlativesLab() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  SCREEN 3 (Option C Wildcard): Coast-to-Coast Flug-Radar + Höhenprofil      */
+/*  SCREEN 3: Coast-to-Coast Flug-Radar + Höhenprofil                          */
 /* -------------------------------------------------------------------------- */
 
 interface FlightStop {
@@ -435,7 +441,7 @@ const FLIGHT_STOPS: FlightStop[] = [
     lon: -155.5,
     lat: 19.9,
     elevationM: 120,
-    note: 'Start mitten im Pazifik: Die vulkanische Inselgruppe bildet den südwestlichsten Bundesstaat der USA.',
+    note: 'Start im Pazifik: Die vulkanische Inselgruppe bildet den südwestlichsten Bundesstaat der USA.',
   },
   {
     id: 'denali',
@@ -444,7 +450,7 @@ const FLIGHT_STOPS: FlightStop[] = [
     lon: -151.0074,
     lat: 63.0695,
     elevationM: 6190,
-    note: 'Gipfelpunkt des Fluges! Der Denali (Mount McKinley) in Alaska ist mit 6.190 Metern der höchste Berg der USA.',
+    note: 'Gipfelpunkt: Der Denali (Mount McKinley) in Alaska ist mit 6.190 Metern der höchste Berg der USA.',
   },
   {
     id: 'rockies',
@@ -453,7 +459,7 @@ const FLIGHT_STOPS: FlightStop[] = [
     lon: -106.5,
     lat: 40.3,
     elevationM: 4350,
-    note: 'Zurück über dem Festland ragen die gewaltigen Rocky Mountains im Westen auf — Wasserscheide Nordamerikas.',
+    note: 'Auf dem Festland ragen die Rocky Mountains im Westen auf — die gewaltige Wasserscheide Nordamerikas.',
   },
   {
     id: 'missouri',
@@ -462,7 +468,7 @@ const FLIGHT_STOPS: FlightStop[] = [
     lon: -90.19,
     lat: 38.82,
     elevationM: 160,
-    note: 'Hier mündet der Missouri (längster Fluss der USA) in den Mississippi — das riesige Stromsystem im Herzen des Landes.',
+    note: 'Im Landesinneren mündet der Missouri (längster Fluss der USA) in den Mississippi.',
   },
   {
     id: 'appalachians',
@@ -471,7 +477,7 @@ const FLIGHT_STOPS: FlightStop[] = [
     lon: -82.26,
     lat: 35.76,
     elevationM: 2037,
-    note: 'Im Osten überfliegen wir die geologisch uralten, sanfteren Appalachen — deutlich niedriger als die Rockies.',
+    note: 'Im Osten liegen die geologisch uralten, sanfteren Appalachen — deutlich niedriger als die Rockies.',
   },
   {
     id: 'eastcoast',
@@ -480,7 +486,7 @@ const FLIGHT_STOPS: FlightStop[] = [
     lon: -75.5,
     lat: 39.8,
     elevationM: 30,
-    note: 'Landung am Atlantik: Zwischen Hauptstadt Washington, D.C. und der 8,4-Millionen-Metropole New York City.',
+    note: 'Ankunft am Atlantik: Zwischen Hauptstadt Washington, D.C. und New York City (~8,4 Mio. Einwohner).',
   },
 ]
 
@@ -495,16 +501,15 @@ function Screen3CoastToCoastRadar() {
     sublabel: idx === stopIdx ? `${s.elevationM.toLocaleString('de-DE')} m` : undefined,
     lon: s.lon,
     lat: s.lat,
-    color: idx === stopIdx ? '#F59E0B' : idx < stopIdx ? '#14B8A6' : '#64748B',
+    color: idx === stopIdx ? '#FF6B00' : idx < stopIdx ? '#0071E3' : '#86868B',
     pulse: idx === stopIdx,
     active: idx === stopIdx,
     muted: idx > stopIdx,
   }))
 
-  const profileData = FLIGHT_STOPS.map((s, idx) => ({
+  const profileData = FLIGHT_STOPS.map((s) => ({
     name: s.label.split(' ')[0],
     Höhe: s.elevationM,
-    reached: idx <= stopIdx,
   }))
 
   return (
@@ -518,7 +523,7 @@ function Screen3CoastToCoastRadar() {
             {
               id: 'flight-path',
               points: FLIGHT_STOPS.map((s) => [s.lon, s.lat]),
-              color: '#F59E0B',
+              color: '#0071E3',
               progress: Math.max(0.03, progress),
               strokeWidth: 3.2,
             },
@@ -527,7 +532,7 @@ function Screen3CoastToCoastRadar() {
             const idx = FLIGHT_STOPS.findIndex((s) => s.id === m.id)
             if (idx >= 0) setStopIdx(idx)
           }}
-          caption="Fliege mit dem Radar-Slider von West nach Ost oder klicke direkt auf die Wegpunkte."
+          caption="Ziehe den Flugregler von West nach Ost oder klicke direkt auf die Stationen."
         />
 
         <div className="flex flex-col justify-between gap-4">
@@ -540,32 +545,31 @@ function Screen3CoastToCoastRadar() {
             aspectClass="aspect-[16/10]"
           />
 
-          <div className="editorial-card rounded-2xl p-4">
+          <div className="apple-card rounded-3xl p-5">
             <div className="flex items-center justify-between text-xs">
-              <span className="inline-flex items-center gap-1.5 font-mono font-semibold text-amber-400">
+              <span className="inline-flex items-center gap-1.5 font-mono font-bold text-[#0071E3]">
                 <Plane className="h-3.5 w-3.5" />
                 {stop.region}
               </span>
-              <span className="font-mono text-slate-400">
-                Stopp {stopIdx + 1}/{FLIGHT_STOPS.length}
+              <span className="font-mono font-semibold text-[#86868B]">
+                {stopIdx + 1}/{FLIGHT_STOPS.length}
               </span>
             </div>
-            <h3 className="mt-1 text-base font-semibold text-white">{stop.label}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-slate-300">{stop.note}</p>
+            <h3 className="font-apple-display mt-1 text-lg text-[#1D1D1F]">{stop.label}</h3>
+            <p className="mt-1 text-xs leading-relaxed font-medium text-[#515154]">{stop.note}</p>
           </div>
         </div>
       </div>
 
-      {/* Synchronized Flight Slider + Elevation Cross-Section */}
-      <div className="editorial-card grid gap-5 rounded-2xl p-5 lg:grid-cols-[1fr_1.45fr] lg:items-center">
+      <div className="apple-card grid gap-5 rounded-3xl p-5 lg:grid-cols-[1fr_1.45fr] lg:items-center">
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="inline-flex items-center gap-1.5 font-semibold text-amber-300">
-              <Plane className="h-3.5 w-3.5" />
-              Transkontinental-Flugregler
+            <span className="inline-flex items-center gap-1.5 font-bold text-[#1D1D1F]">
+              <Plane className="h-3.5 w-3.5 text-[#0071E3]" />
+              Flugregler (West → Ost)
             </span>
-            <span className="font-mono text-white">
-              Höhe: {stop.elevationM.toLocaleString('de-DE')} m
+            <span className="font-mono font-bold text-[#0071E3]">
+              {stop.elevationM.toLocaleString('de-DE')} m
             </span>
           </div>
           <input
@@ -576,12 +580,12 @@ function Screen3CoastToCoastRadar() {
             value={stopIdx}
             onChange={(e) => setStopIdx(Number(e.target.value))}
             className="yuno-slider w-full"
-            style={{ ['--slider-accent' as string]: '#F59E0B' }}
+            style={{ ['--slider-accent' as string]: '#0071E3' }}
           />
-          <div className="flex justify-between font-mono text-[10px] text-slate-500">
-            <span>Pazifik (Hawaii)</span>
+          <div className="flex justify-between font-mono text-[10px] font-semibold text-[#86868B]">
+            <span>Hawaii</span>
             <span>Denali · Rockies</span>
-            <span>Atlantik (NYC)</span>
+            <span>Atlantik</span>
           </div>
         </div>
 
@@ -589,24 +593,25 @@ function Screen3CoastToCoastRadar() {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={profileData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
               <defs>
-                <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.5} />
-                  <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.04} />
+                <linearGradient id="appleElevGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#0071E3" stopOpacity={0.28} />
+                  <stop offset="95%" stopColor="#0071E3" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-              <XAxis dataKey="name" tick={{ fill: '#94A3B8', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#64748B', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+              <XAxis dataKey="name" tick={{ fill: '#515154', fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: '#86868B', fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip
                 formatter={(v) => [`${Number(v).toLocaleString('de-DE')} m`, 'Höhenprofil']}
                 contentStyle={{
-                  backgroundColor: '#0B0F19',
-                  borderColor: 'rgba(255,255,255,0.12)',
-                  borderRadius: '12px',
+                  backgroundColor: '#FFFFFF',
+                  borderColor: 'rgba(0,0,0,0.08)',
+                  borderRadius: '14px',
                   fontSize: '12px',
+                  color: '#1D1D1F',
                 }}
               />
-              <Area type="monotone" dataKey="Höhe" stroke="#F59E0B" strokeWidth={2.2} fill="url(#elevGrad)" />
+              <Area type="monotone" dataKey="Höhe" stroke="#0071E3" strokeWidth={2.5} fill="url(#appleElevGrad)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -616,7 +621,7 @@ function Screen3CoastToCoastRadar() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  SCREEN 4 (Option B + C): Fluss-/Höhen-Messlabor + Denkfehler-Radar         */
+/*  SCREEN 4: Fluss-/Höhen-Messlabor + Denkfehler-Radar                        */
 /* -------------------------------------------------------------------------- */
 
 interface MythCard {
@@ -646,7 +651,7 @@ const MYTH_CHECKS: MythCard[] = [
     statement: '„Der höchste Berg der USA liegt in den Rocky Mountains.“',
     isTrue: false,
     correction:
-      'Falsch! Der höchste Berg ist der Denali (Mount McKinley) mit 6.190 m — und der steht weit im Norden in Alaska.',
+      'Falsch! Der höchste Berg ist der Denali (Mount McKinley) mit 6.190 m — und der steht in Alaska.',
   },
 ]
 
@@ -660,11 +665,10 @@ function Screen4MeasureAndMythLab() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
-      {/* Left: River Race & Mountain Altitude Gauge (Option B) */}
-      <div className="editorial-card space-y-6 rounded-2xl p-5">
+      <div className="apple-card space-y-6 rounded-3xl p-6">
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-300">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0071E3]">
               <Waves className="h-4 w-4" />
               Flusslängen-Rennen
             </span>
@@ -674,88 +678,87 @@ function Screen4MeasureAndMythLab() {
                 setRaceStarted(false)
                 window.setTimeout(() => setRaceStarted(true), 60)
               }}
-              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-300 hover:bg-white/10 hover:text-white"
+              className="rounded-full bg-[#F2F2F7] px-3 py-1 text-[11px] font-bold text-[#1D1D1F] hover:bg-[#E5E5EA]"
             >
-              Rennen neu starten
+              Neu starten
             </button>
           </div>
 
           <div className="space-y-3">
             <div>
               <div className="mb-1 flex justify-between text-xs">
-                <span className="font-semibold text-white">1. Missouri (Längster Fluss)</span>
-                <span className="font-mono text-sky-300">~3.767 km</span>
+                <span className="font-bold text-[#1D1D1F]">1. Missouri (Längster Fluss)</span>
+                <span className="font-mono font-bold text-[#0071E3]">~3.767 km</span>
               </div>
-              <div className="h-3.5 w-full overflow-hidden rounded-full bg-white/8">
+              <div className="h-3.5 w-full overflow-hidden rounded-full bg-[#EFEFF4]">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: raceStarted ? '100%' : '0%' }}
                   transition={{ duration: 1.1, ease: 'easeOut' }}
-                  className="h-full rounded-full bg-gradient-to-r from-sky-500 to-teal-400"
+                  className="h-full rounded-full bg-[#0071E3]"
                 />
               </div>
             </div>
 
             <div>
               <div className="mb-1 flex justify-between text-xs">
-                <span className="font-semibold text-slate-200">2. Mississippi (Dicht dahinter)</span>
-                <span className="font-mono text-indigo-300">~3.730 km</span>
+                <span className="font-bold text-[#515154]">2. Mississippi (Dicht dahinter)</span>
+                <span className="font-mono font-semibold text-[#515154]">~3.730 km</span>
               </div>
-              <div className="h-3.5 w-full overflow-hidden rounded-full bg-white/8">
+              <div className="h-3.5 w-full overflow-hidden rounded-full bg-[#EFEFF4]">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: raceStarted ? '97%' : '0%' }}
                   transition={{ duration: 1.1, ease: 'easeOut', delay: 0.08 }}
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-sky-400"
+                  className="h-full rounded-full bg-[#64748B]"
                 />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Altitude comparison */}
-        <div className="space-y-3 border-t border-white/[0.08] pt-5">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
-            <Mountain className="h-4 w-4" />
+        <div className="space-y-3 border-t border-black/[0.06] pt-5">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#1D1D1F]">
+            <Mountain className="h-4 w-4 text-[#0071E3]" />
             Höhenmesser: Denali vs. Gebirge
           </div>
 
           <div className="grid grid-cols-4 items-end gap-2.5 pt-2">
             {[
-              { label: 'Denali', sub: 'Alaska', m: 6190, pct: 100, color: 'bg-amber-400' },
-              { label: 'Rockies', sub: 'Westen', m: 4401, pct: 71, color: 'bg-teal-400' },
-              { label: 'Zugspitze', sub: 'Vergleich', m: 2962, pct: 48, color: 'bg-slate-500' },
-              { label: 'Appalachen', sub: 'Osten', m: 2037, pct: 33, color: 'bg-indigo-400' },
+              { label: 'Denali', sub: 'Alaska', m: 6190, pct: 100, color: 'bg-[#0071E3]' },
+              { label: 'Rockies', sub: 'Westen', m: 4401, pct: 71, color: 'bg-[#0F766E]' },
+              { label: 'Zugspitze', sub: 'Vergleich', m: 2962, pct: 48, color: 'bg-[#AEAEB2]' },
+              { label: 'Appalachen', sub: 'Osten', m: 2037, pct: 33, color: 'bg-[#515154]' },
             ].map((peak) => (
               <div key={peak.label} className="flex flex-col items-center text-center">
-                <span className="mb-1 font-mono text-[10px] font-semibold text-slate-300">
+                <span className="mb-1 font-mono text-[10px] font-bold text-[#515154]">
                   {peak.m.toLocaleString('de-DE')} m
                 </span>
-                <div className="flex h-32 w-full items-end justify-center rounded-xl bg-[#0B0F19] p-1.5">
+                <div className="flex h-32 w-full items-end justify-center rounded-2xl bg-[#F5F5F7] p-1.5">
                   <div
                     style={{ height: `${peak.pct}%` }}
-                    className={`w-full rounded-lg ${peak.color} transition-all duration-500`}
+                    className={`w-full rounded-xl ${peak.color} transition-all duration-500`}
                   />
                 </div>
-                <span className="mt-1.5 text-xs font-semibold text-white">{peak.label}</span>
-                <span className="text-[10px] text-slate-400">{peak.sub}</span>
+                <span className="mt-1.5 text-xs font-extrabold text-[#1D1D1F]">{peak.label}</span>
+                <span className="text-[10px] font-medium text-[#86868B]">{peak.sub}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Right: "Finde den Denkfehler"-Radar (Option C) */}
-      <div className="editorial-card space-y-4 rounded-2xl p-5">
+      {/* Myth Checks */}
+      <div className="apple-card space-y-4 rounded-3xl p-6">
         <div>
-          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold text-amber-400 uppercase">
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#FF6B00] uppercase">
             <Sparkles className="h-3.5 w-3.5" />
-            Finde den Denkfehler · Schnell-Check
+            Schnell-Check
           </span>
-          <h3 className="mt-1 text-base font-semibold text-white">
-            Die 3 klassischen USA-Irrtümer entlarven
+          <h3 className="font-apple-display mt-1 text-lg text-[#1D1D1F]">
+            Die 3 klassischen USA-Irrtümer
           </h3>
-          <p className="mt-0.5 text-xs text-slate-400">
+          <p className="mt-0.5 text-xs font-medium text-[#6E6E73]">
             Tippe bei jeder Aussage auf „Stimmt“ oder „Irrtum“:
           </p>
         </div>
@@ -770,36 +773,36 @@ function Screen4MeasureAndMythLab() {
                 className={`rounded-2xl border p-4 transition ${
                   answered
                     ? wasRight
-                      ? 'border-emerald-500/40 bg-emerald-500/10'
-                      : 'border-amber-500/40 bg-amber-500/10'
-                    : 'border-white/10 bg-[#0D1322]'
+                      ? 'border-[#BBF7D0] bg-[#F0FDF4]'
+                      : 'border-[#FDE68A] bg-[#FFFBEB]'
+                    : 'border-black/[0.06] bg-[#F5F5F7]'
                 }`}
               >
-                <p className="text-sm font-semibold text-white">{myth.statement}</p>
+                <p className="text-sm font-bold text-[#1D1D1F]">{myth.statement}</p>
 
                 {!answered ? (
                   <div className="mt-3 flex gap-2">
                     <button
                       type="button"
                       onClick={() => handleMythTap(myth, true)}
-                      className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] py-2 text-xs font-semibold text-slate-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15"
+                      className="flex-1 rounded-full bg-white py-2 text-xs font-bold text-[#1D1D1F] ring-1 ring-black/[0.08] transition hover:bg-[#1D1D1F] hover:text-white"
                     >
                       Stimmt
                     </button>
                     <button
                       type="button"
                       onClick={() => handleMythTap(myth, false)}
-                      className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] py-2 text-xs font-semibold text-slate-200 transition hover:border-rose-400/50 hover:bg-rose-500/15"
+                      className="flex-1 rounded-full bg-white py-2 text-xs font-bold text-[#1D1D1F] ring-1 ring-black/[0.08] transition hover:bg-[#1D1D1F] hover:text-white"
                     >
                       Irrtum!
                     </button>
                   </div>
                 ) : (
-                  <div className="mt-2.5 flex items-start gap-2 text-xs leading-relaxed text-slate-200">
+                  <div className="mt-2.5 flex items-start gap-2 text-xs leading-relaxed font-medium text-[#1D1D1F]">
                     {wasRight ? (
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />
                     ) : (
-                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#D97706]" />
                     )}
                     <span>{myth.correction}</span>
                   </div>
@@ -814,7 +817,7 @@ function Screen4MeasureAndMythLab() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  SCREEN 5 (Option A + B + C): „Stars and Stripes“ Zeitreise & Farb-Decoder  */
+/*  SCREEN 5: „Stars and Stripes“ Zeitreise, Farb-Decoder & WebAudio-Melodie   */
 /* -------------------------------------------------------------------------- */
 
 interface FlagEra {
@@ -828,7 +831,7 @@ const FLAG_ERAS: FlagEra[] = [
   {
     year: 1777,
     stars: 13,
-    label: '1777 · Geburtsstunde',
+    label: '1777 · Einführung',
     note: 'Am 14. Juni 1777 offiziell eingeführt: 13 Streifen & 13 Sterne für die 13 Gründerstaaten.',
   },
   {
@@ -862,37 +865,35 @@ type FlagColorFocus = 'all' | 'red' | 'white' | 'blue'
 const COLOR_INFO: Record<FlagColorFocus, { title: string; meaning: string; badge: string }> = {
   all: {
     title: 'Stars and Stripes (Sterne & Streifen)',
-    meaning: 'Klicke eine Farbe an, um sie auf der Flagge isoliert hervorzuheben und ihre Symbolik zu entschlüsseln.',
-    badge: 'Alle Ebenen',
+    meaning: 'Klicke eine Farbe an, um sie auf der Flagge hervorzuheben und ihre Bedeutung zu sehen.',
+    badge: 'Alle Farben',
   },
   red: {
-    title: 'Rot — Tapferkeit (Valor & Hardiness)',
-    meaning: 'Die 7 roten Streifen stehen symbolisch für Mut, Tapferkeit und Standhaftigkeit.',
-    badge: 'Rot aktiv',
+    title: 'Rot — Tapferkeit',
+    meaning: 'Die 7 roten Streifen stehen für Mut, Tapferkeit und Standhaftigkeit.',
+    badge: 'Rot',
   },
   white: {
-    title: 'Weiß — Reinheit (Purity & Innocence)',
-    meaning: 'Die 6 weißen Streifen sowie die 50 Sterne symbolisieren Reinheit und Unschuld.',
-    badge: 'Weiß aktiv',
+    title: 'Weiß — Reinheit',
+    meaning: 'Die 6 weißen Streifen sowie die 50 Sterne stehen für Reinheit und Unschuld.',
+    badge: 'Weiß',
   },
   blue: {
-    title: 'Blau — Gerechtigkeit (Justice & Vigilance)',
-    meaning: 'Das blaue Sternenfeld (Canton) steht für Gerechtigkeit, Ausdauer und Wachsamkeit.',
-    badge: 'Blau aktiv',
+    title: 'Blau — Gerechtigkeit',
+    meaning: 'Das blaue Sternenfeld steht für Gerechtigkeit, Ausdauer und Wachsamkeit.',
+    badge: 'Blau',
   },
 }
 
 function generateStarPositions(count: number): Array<{ cx: number; cy: number }> {
   const pts: Array<{ cx: number; cy: number }> = []
   if (count === 13) {
-    // Iconic Betsy Ross 13-star circle
     for (let i = 0; i < 13; i++) {
       const angle = (i / 13) * Math.PI * 2 - Math.PI / 2
       pts.push({ cx: 114 + Math.cos(angle) * 52, cy: 81 + Math.sin(angle) * 52 })
     }
     return pts
   }
-  // Clean staggered grid for 20 / 48 / 49 / 50 stars inside canton (x: 16..212, y: 14..148)
   const rows = count === 20 ? 4 : count === 48 ? 6 : count === 49 ? 7 : 9
   const colsEven = count === 20 ? 5 : count === 48 ? 8 : count === 49 ? 7 : 6
   const colsOdd = count === 50 ? 5 : colsEven
@@ -905,10 +906,7 @@ function generateStarPositions(count: number): Array<{ cx: number; cy: number }>
     const xStep = cols > 1 ? usableW / (cols - 1) : 0
     for (let c = 0; c < cols; c++) {
       if (pts.length < count) {
-        pts.push({
-          cx: xPad + c * xStep,
-          cy: 14 + (r + 1) * yStep,
-        })
+        pts.push({ cx: xPad + c * xStep, cy: 14 + (r + 1) * yStep })
       }
     }
   }
@@ -918,206 +916,218 @@ function generateStarPositions(count: number): Array<{ cx: number; cy: number }>
 function Screen5FlagTimeMachine() {
   const [eraIdx, setEraIdx] = useState(4)
   const [colorFocus, setColorFocus] = useState<FlagColorFocus>('all')
-  const [playingFanfare, setPlayingFanfare] = useState(false)
-  const synthRef = useRef<Tone.PolySynth | null>(null)
+  const [activeNoteIdx, setActiveNoteIdx] = useState<number | null>(null)
+  const cancelAudioRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     return () => {
-      synthRef.current?.dispose()
-      synthRef.current = null
+      cancelAudioRef.current?.()
+      stopAllAudio()
     }
   }, [])
 
   const era = FLAG_ERAS[eraIdx]
   const stars = generateStarPositions(era.stars)
+  const isPlaying = activeNoteIdx !== null
 
-  const playFlagDayFanfare = async () => {
-    await Tone.start()
-    if (!synthRef.current) {
-      synthRef.current = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-      }).toDestination()
+  const toggleFlagMelody = () => {
+    if (isPlaying) {
+      cancelAudioRef.current?.()
+      cancelAudioRef.current = null
+      setActiveNoteIdx(null)
+      return
     }
-    setPlayingFanfare(true)
-    const now = Tone.now()
-    // Classic bright triad fanfare motif (G4 -> E4 -> C4 -> E4 -> G4 -> C5)
-    const notes = [
-      { p: 'G4', d: '8n', t: 0 },
-      { p: 'E4', d: '8n', t: 0.18 },
-      { p: 'C4', d: '4n', t: 0.36 },
-      { p: 'E4', d: '4n', t: 0.68 },
-      { p: 'G4', d: '4n', t: 1.0 },
-      { p: 'C5', d: '2n', t: 1.32 },
-    ]
-    for (const n of notes) {
-      synthRef.current.triggerAttackRelease(n.p, n.d, now + n.t)
-    }
-    window.setTimeout(() => setPlayingFanfare(false), 1900)
+    const { cancel } = playMelody(STAR_SPANGLED_OPENING, (idx) => {
+      setActiveNoteIdx(idx)
+      if (idx === null) cancelAudioRef.current = null
+    })
+    cancelAudioRef.current = cancel
   }
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
-        {/* Interactive Geometric Live Flag Canvas */}
-        <div className="editorial-card space-y-4 rounded-3xl p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-amber-300">
-              <Flag className="h-4 w-4" />
-              {era.label}
-            </span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 font-mono text-xs text-white">
-              13 Streifen · {era.stars} Sterne
-            </span>
-          </div>
+    <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
+      <div className="apple-card space-y-4 rounded-3xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-[#0071E3]">
+            <Flag className="h-4 w-4" />
+            {era.label}
+          </span>
+          <span className="rounded-full bg-[#F2F2F7] px-3 py-0.5 font-mono text-xs font-bold text-[#1D1D1F]">
+            13 Streifen · {era.stars} Sterne
+          </span>
+        </div>
 
-          <div className="overflow-hidden rounded-2xl border border-white/15 bg-[#070B14] shadow-2xl">
-            <svg viewBox="0 0 570 300" className="h-auto w-full select-none" role="img" aria-label={`US-Flagge ${era.year} mit ${era.stars} Sternen`}>
-              {/* 13 Stripes */}
-              {Array.from({ length: 13 }).map((_, idx) => {
-                const isRed = idx % 2 === 0
-                const dimmed =
-                  (colorFocus === 'red' && !isRed) ||
-                  (colorFocus === 'white' && isRed) ||
-                  colorFocus === 'blue'
-                return (
-                  <rect
-                    key={idx}
-                    x={0}
-                    y={(idx * 300) / 13}
-                    width={570}
-                    height={300 / 13 + 0.4}
-                    fill={isRed ? '#B22234' : '#F8FAFC'}
-                    opacity={dimmed ? 0.16 : 1}
-                    style={{ transition: 'opacity 280ms ease' }}
-                  />
-                )
-              })}
-
-              {/* Blue Canton */}
-              <rect
-                x={0}
-                y={0}
-                width={228}
-                height={(7 * 300) / 13}
-                fill="#1E3A8A"
-                opacity={colorFocus === 'red' || colorFocus === 'white' ? 0.2 : 1}
-                style={{ transition: 'opacity 280ms ease' }}
-              />
-
-              {/* Stars */}
-              {stars.map((s, idx) => (
-                <circle
-                  key={`${era.year}-${idx}`}
-                  cx={s.cx}
-                  cy={s.cy}
-                  r={era.stars === 13 ? 5.2 : era.stars <= 20 ? 4.8 : 3.9}
-                  fill="#FFFFFF"
-                  opacity={colorFocus === 'red' || colorFocus === 'blue' ? 0.25 : 1}
-                  style={{ transition: 'opacity 280ms ease' }}
+        <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
+          <svg
+            viewBox="0 0 570 300"
+            className="h-auto w-full select-none"
+            role="img"
+            aria-label={`US-Flagge ${era.year} mit ${era.stars} Sternen`}
+          >
+            {Array.from({ length: 13 }).map((_, idx) => {
+              const isRed = idx % 2 === 0
+              const dimmed =
+                (colorFocus === 'red' && !isRed) ||
+                (colorFocus === 'white' && isRed) ||
+                colorFocus === 'blue'
+              return (
+                <rect
+                  key={idx}
+                  x={0}
+                  y={(idx * 300) / 13}
+                  width={570}
+                  height={300 / 13 + 0.4}
+                  fill={isRed ? '#B22234' : '#FFFFFF'}
+                  opacity={dimmed ? 0.14 : 1}
+                  style={{ transition: 'opacity 250ms ease' }}
                 />
-              ))}
-            </svg>
+              )
+            })}
+
+            <rect
+              x={0}
+              y={0}
+              width={228}
+              height={(7 * 300) / 13}
+              fill="#1E3A8A"
+              opacity={colorFocus === 'red' || colorFocus === 'white' ? 0.18 : 1}
+              style={{ transition: 'opacity 250ms ease' }}
+            />
+
+            {stars.map((s, idx) => (
+              <circle
+                key={`${era.year}-${idx}`}
+                cx={s.cx}
+                cy={s.cy}
+                r={era.stars === 13 ? 5.2 : era.stars <= 20 ? 4.8 : 3.9}
+                fill="#FFFFFF"
+                opacity={colorFocus === 'red' || colorFocus === 'blue' ? 0.25 : 1}
+                style={{ transition: 'opacity 250ms ease' }}
+              />
+            ))}
+          </svg>
+        </div>
+
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-[#1D1D1F]">Zeitreise-Slider (1777 → Heute)</span>
+            <span className="font-mono font-bold text-[#0071E3]">{era.year}</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={FLAG_ERAS.length - 1}
+            step={1}
+            value={eraIdx}
+            onChange={(e) => setEraIdx(Number(e.target.value))}
+            className="yuno-slider w-full"
+            style={{ ['--slider-accent' as string]: '#0071E3' }}
+          />
+          <div className="flex justify-between font-mono text-[10px] font-semibold text-[#86868B]">
+            <span>1777 (13★)</span>
+            <span>1912 (48★)</span>
+            <span>Alaska (49★)</span>
+            <span>Hawaii (50★)</span>
+          </div>
+          <p className="pt-1 text-xs leading-relaxed font-medium text-[#515154]">{era.note}</p>
+        </div>
+      </div>
+
+      {/* Color Decoder + Flag Day with Bulletproof Web Audio */}
+      <div className="flex flex-col justify-between gap-4">
+        <div className="apple-card space-y-4 rounded-3xl p-5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[11px] font-bold text-[#86868B] uppercase">
+              Farb-Decoder
+            </span>
+            <span className="rounded-full bg-[#F2F2F7] px-2.5 py-0.5 font-mono text-[10px] font-bold text-[#515154]">
+              {COLOR_INFO[colorFocus].badge}
+            </span>
           </div>
 
-          {/* Time-Travel Slider (1777 -> 1960) */}
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-indigo-300">Zeitreise-Slider (1777 → Heute)</span>
-              <span className="font-mono text-slate-300">{era.year}</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={FLAG_ERAS.length - 1}
-              step={1}
-              value={eraIdx}
-              onChange={(e) => setEraIdx(Number(e.target.value))}
-              className="yuno-slider w-full"
-              style={{ ['--slider-accent' as string]: '#6366F1' }}
-            />
-            <div className="flex justify-between font-mono text-[10px] text-slate-500">
-              <span>1777 (13★)</span>
-              <span>1912 (48★)</span>
-              <span>1959 Alaska (49★)</span>
-              <span>1960 Hawaii (50★)</span>
-            </div>
-            <p className="pt-1 text-xs leading-relaxed text-slate-300">{era.note}</p>
+          <div className="grid grid-cols-4 gap-2">
+            {(
+              [
+                { id: 'all', label: 'Alle', swatch: 'bg-gradient-to-r from-[#B22234] via-white to-[#1E3A8A]' },
+                { id: 'red', label: 'Rot', swatch: 'bg-[#B22234]' },
+                { id: 'white', label: 'Weiß', swatch: 'bg-white' },
+                { id: 'blue', label: 'Blau', swatch: 'bg-[#1E3A8A]' },
+              ] as const
+            ).map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setColorFocus(c.id)}
+                className={`flex flex-col items-center gap-1.5 rounded-2xl border p-2.5 text-xs font-bold transition ${
+                  colorFocus === c.id
+                    ? 'border-[#1D1D1F] bg-[#1D1D1F] text-white'
+                    : 'border-black/[0.08] bg-[#F5F5F7] text-[#515154] hover:border-black/20'
+                }`}
+              >
+                <span className={`h-4 w-8 rounded-full border border-black/15 ${c.swatch}`} />
+                <span>{c.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-2xl bg-[#F5F5F7] p-4">
+            <h4 className="text-sm font-extrabold text-[#1D1D1F]">{COLOR_INFO[colorFocus].title}</h4>
+            <p className="mt-1 text-xs leading-relaxed font-medium text-[#515154]">
+              {COLOR_INFO[colorFocus].meaning}
+            </p>
           </div>
         </div>
 
-        {/* Color Decoder + Flag Day (14. Juni) + Tone.js */}
-        <div className="flex flex-col justify-between gap-4">
-          <div className="editorial-card space-y-4 rounded-2xl p-5">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[11px] font-semibold text-slate-400 uppercase">
-                Farb- &amp; Symbol-Decoder
-              </span>
-              <span className="rounded-full bg-white/8 px-2 py-0.5 font-mono text-[10px] text-slate-300">
-                {COLOR_INFO[colorFocus].badge}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-4 gap-2">
-              {(
-                [
-                  { id: 'all', label: 'Alle', swatch: 'bg-gradient-to-r from-red-600 via-white to-blue-800' },
-                  { id: 'red', label: 'Rot', swatch: 'bg-[#B22234]' },
-                  { id: 'white', label: 'Weiß', swatch: 'bg-slate-100' },
-                  { id: 'blue', label: 'Blau', swatch: 'bg-[#1E3A8A]' },
-                ] as const
-              ).map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setColorFocus(c.id)}
-                  className={`flex flex-col items-center gap-1.5 rounded-xl border p-2.5 text-xs font-semibold transition ${
-                    colorFocus === c.id
-                      ? 'border-white bg-white/12 text-white'
-                      : 'border-white/10 bg-[#0D1322] text-slate-400 hover:border-white/25'
-                  }`}
-                >
-                  <span className={`h-4 w-8 rounded-full border border-white/20 ${c.swatch}`} />
-                  <span>{c.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="rounded-xl border border-white/[0.08] bg-[#0B0F19] p-4">
-              <h4 className="text-sm font-semibold text-white">{COLOR_INFO[colorFocus].title}</h4>
-              <p className="mt-1 text-xs leading-relaxed text-slate-300">
-                {COLOR_INFO[colorFocus].meaning}
+        {/* Flag Day + Reliable Native Web Audio Melody */}
+        <div className="apple-card flex flex-col justify-between gap-4 rounded-3xl p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#FF6B00] uppercase">
+                <Calendar className="h-3.5 w-3.5" />
+                Feiertag · 14. Juni
+              </div>
+              <h4 className="font-apple-black mt-1 text-xl text-[#1D1D1F]">„Flag Day“</h4>
+              <p className="mt-1 text-xs leading-relaxed font-medium text-[#515154]">
+                Jedes Jahr am <strong>14. Juni</strong> feiern die USA die Einführung der „Stars and Stripes“ (1777).
               </p>
             </div>
-          </div>
-
-          {/* Flag Day Card + Tone.js Sound */}
-          <div className="editorial-card flex flex-col justify-between gap-4 rounded-2xl p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold text-amber-400 uppercase">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Eigener Feiertag · 14. Juni
-                </div>
-                <h4 className="mt-1 text-lg font-bold text-white">„Flag Day“</h4>
-                <p className="mt-1 text-xs leading-relaxed text-slate-300">
-                  Jedes Jahr am <strong>14. Juni</strong> feiern die USA die Einführung der „Stars and Stripes“ im Jahr <strong>1777</strong>.
-                </p>
-              </div>
-              <div className="shrink-0 rounded-2xl border border-amber-400/35 bg-amber-500/15 px-3.5 py-2 text-center">
-                <span className="block font-mono text-xl font-bold text-amber-300">14</span>
-                <span className="font-mono text-[10px] font-semibold text-amber-200 uppercase">Juni</span>
-              </div>
+            <div className="shrink-0 rounded-2xl bg-[#FFF3E6] px-3.5 py-2 text-center">
+              <span className="font-apple-black block text-2xl text-[#FF6B00]">14</span>
+              <span className="font-mono text-[10px] font-bold text-[#D95300] uppercase">Juni</span>
             </div>
-
-            <button
-              type="button"
-              onClick={playFlagDayFanfare}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-400/40 bg-indigo-500/15 px-4 py-2.5 text-xs font-semibold text-indigo-200 transition hover:bg-indigo-500/25"
-            >
-              <Volume2 className={`h-4 w-4 ${playingFanfare ? 'animate-pulse text-amber-300' : ''}`} />
-              <span>{playingFanfare ? 'Fanfare erklingt…' : 'Flag-Day-Fanfare abspielen (Tone.js)'}</span>
-            </button>
           </div>
+
+          <button
+            type="button"
+            onClick={toggleFlagMelody}
+            className={`inline-flex items-center justify-center gap-2.5 rounded-full px-5 py-3 text-xs font-bold transition ${
+              isPlaying
+                ? 'bg-[#1D1D1F] text-white'
+                : 'bg-[#0071E3] text-white hover:bg-[#0077ED]'
+            }`}
+          >
+            {isPlaying ? (
+              <>
+                <Square className="h-3.5 w-3.5 fill-current" />
+                <span>Melodie stoppen</span>
+                <span className="ml-1 inline-flex items-end gap-0.5">
+                  {[0, 1, 2].map((bar) => (
+                    <motion.span
+                      key={bar}
+                      animate={{ height: ['4px', '14px', '6px'] }}
+                      transition={{ duration: 0.45, repeat: Infinity, delay: bar * 0.12 }}
+                      className="w-1 rounded-full bg-white"
+                    />
+                  ))}
+                </span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="h-4 w-4" />
+                <span>Nationalhymne anspielen (Anfangsmotiv)</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
@@ -1125,7 +1135,7 @@ function Screen5FlagTimeMachine() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  SCREEN 6 (Medien-Galerie): Verifizierte Naturfotos & YouTube-Überblick     */
+/*  SCREEN 6: Verifizierte Naturfotos & YouTube-Überblick                      */
 /* -------------------------------------------------------------------------- */
 
 const MEDIA_SPOTS = [
@@ -1162,7 +1172,6 @@ function Screen6MediaGallery() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
-      {/* Interactive Wikimedia Photo Explorer */}
       <div className="space-y-3">
         <div className="flex flex-wrap gap-1.5">
           {MEDIA_SPOTS.map((m, idx) => (
@@ -1170,10 +1179,10 @@ function Screen6MediaGallery() {
               key={m.id}
               type="button"
               onClick={() => setSpotIdx(idx)}
-              className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+              className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
                 spotIdx === idx
-                  ? 'border-teal-400 bg-teal-500/15 text-teal-200'
-                  : 'border-white/10 bg-[#131B2E] text-slate-400 hover:text-white'
+                  ? 'bg-[#1D1D1F] text-white'
+                  : 'bg-white text-[#515154] ring-1 ring-black/[0.08] hover:text-[#1D1D1F]'
               }`}
             >
               {m.label}
@@ -1191,19 +1200,18 @@ function Screen6MediaGallery() {
         />
       </div>
 
-      {/* Verified YouTube Video Player with Exact Timestamps */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-            <Film className="h-4 w-4 text-teal-400" />
-            Verifizierte Video-Clips
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1D1D1F]">
+            <Film className="h-4 w-4 text-[#0071E3]" />
+            Video-Ausschnitte
           </span>
-          <div className="flex rounded-xl border border-white/10 bg-[#131B2E] p-1 text-xs">
+          <div className="flex rounded-full bg-[#EFEFF4] p-1 text-xs">
             <button
               type="button"
               onClick={() => setVideoTab('karten')}
-              className={`rounded-lg px-2.5 py-1 font-medium transition ${
-                videoTab === 'karten' ? 'bg-teal-500 text-[#0B0F19]' : 'text-slate-400 hover:text-white'
+              className={`rounded-full px-3 py-1 font-bold transition ${
+                videoTab === 'karten' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
               USA in Karten
@@ -1211,11 +1219,11 @@ function Screen6MediaGallery() {
             <button
               type="button"
               onClick={() => setVideoTab('terrax')}
-              className={`rounded-lg px-2.5 py-1 font-medium transition ${
-                videoTab === 'terrax' ? 'bg-teal-500 text-[#0B0F19]' : 'text-slate-400 hover:text-white'
+              className={`rounded-full px-3 py-1 font-bold transition ${
+                videoTab === 'terrax' ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
               }`}
             >
-              Terra X Nordamerika
+              Terra X
             </button>
           </div>
         </div>
@@ -1247,7 +1255,7 @@ function Screen6MediaGallery() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  LESSON DEFINITION (auto-registered in /src/lessons/registry.ts)           */
+/*  LESSON DEFINITION                                                          */
 /* -------------------------------------------------------------------------- */
 
 const usaAtlasUndFlaggeLesson: LessonDefinition = {
@@ -1256,7 +1264,7 @@ const usaAtlasUndFlaggeLesson: LessonDefinition = {
   categoryId: 'geografie',
   title: 'USA — Kontinent-Atlas, Superlative & „Stars and Stripes“',
   subtitle:
-    'Von Hawaii über den Denali bis New York City: Erkunde die Geografie der Vereinigten Staaten per Transkontinental-Flug, Größenlabor und lebendiger Flaggen-Zeitreise.',
+    'Von Hawaii über den Denali bis New York City: Erkunde die Geografie der USA per Transkontinental-Flug, Größenlabor und lebendiger Flaggen-Zeitreise.',
   eraOrContext: '50 Staaten · 1777–Heute',
   estimatedMinutes: 7,
   difficulty: 'Einstieg',
@@ -1279,7 +1287,7 @@ const usaAtlasUndFlaggeLesson: LessonDefinition = {
       badge: '01 · Visueller Atlas',
       title: 'Ein Kontinent zwischen Atlantik und Pazifik',
       subtitle:
-        'Entdecke Nachbarn, Ozeane, Hauptstadt und die beiden Sonderstaaten Alaska und Hawaii direkt auf der echten Nordamerika-Karte.',
+        'Entdecke Nachbarn, Ozeane, Hauptstadt und die beiden Sonderstaaten Alaska und Hawaii auf der echten Nordamerika-Karte.',
       component: Screen1NorthAmericaAtlas,
     },
     {
@@ -1295,12 +1303,12 @@ const usaAtlasUndFlaggeLesson: LessonDefinition = {
       badge: '03 · Coast-to-Coast Flug-Radar',
       title: 'Transkontinental-Flug von Hawaii bis New York',
       subtitle:
-        'Steuere dein Höhen-Radar von West nach Ost über Denali (6.190 m), Rocky Mountains, Missouri/Mississippi und die Appalachen.',
+        'Steuere dein Höhen-Radar von West nach Ost über Denali (6.190 m), Rocky Mountains, Missouri/Mississippi und Appalachen.',
       component: Screen3CoastToCoastRadar,
     },
     {
       id: 'messlabor-denkfehler',
-      badge: '04 · Labor & Denkfehler-Radar',
+      badge: '04 · Labor & Schnell-Check',
       title: 'Missouri vs. Mississippi & die 3 klassischen Irrtümer',
       subtitle:
         'Starte das Flusslängen-Rennen, prüfe das Höhenprofil und entlarve die häufigsten USA-Verwechslungen.',
@@ -1311,7 +1319,7 @@ const usaAtlasUndFlaggeLesson: LessonDefinition = {
       badge: '05 · Lebendige Flagge (1777–Heute)',
       title: 'Die „Stars and Stripes“ Zeitreise & Farb-Decoder',
       subtitle:
-        'Sieh live, wie die Sterne von 13 auf 50 wachsen, isoliere Rot, Weiß und Blau — und hör die Fanfare zum Flag Day am 14. Juni.',
+        'Sieh live, wie die Sterne von 13 auf 50 wachsen, isoliere Rot, Weiß und Blau — und hör die Melodie zum Flag Day am 14. Juni.',
       component: Screen5FlagTimeMachine,
     },
     {
@@ -1319,7 +1327,7 @@ const usaAtlasUndFlaggeLesson: LessonDefinition = {
       badge: '06 · Foto & Video',
       title: 'Amerikas Naturräume & Metropolen in Bild & Film',
       subtitle:
-        'Klicke dich durch verifizierte Wikimedia-Aufnahmen und verankere das Wissen mit zwei kompakten Video-Ausschnitten.',
+        'Klicke dich durch echte Wikimedia-Aufnahmen und zwei kompakte Video-Ausschnitte.',
       component: Screen6MediaGallery,
     },
   ],

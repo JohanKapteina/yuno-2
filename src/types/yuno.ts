@@ -219,6 +219,7 @@ export interface YunoPersistedState {
   xp: number
   streakDays: number
   lastActivityDate: string | null
+  activeDates?: string[]
   lessonProgress: Record<string, LessonProgress>
   reviewCards: Record<string, ReviewCardState>
 }

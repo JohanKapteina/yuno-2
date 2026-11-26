@@ -5,6 +5,7 @@ import { TopNav } from './components/layout/TopNav'
 import type { ActiveRoute } from './components/layout/TopNav'
 import { LessonPlayerView } from './components/lesson/LessonPlayerView'
 import { ReviewFolderView } from './components/review/ReviewFolderView'
+import { StreakCelebration } from './components/ui/StreakCelebration'
 import { getLessonById } from './lessons/registry'
 import { YunoStoreProvider } from './store/useYunoStore'
 
@@ -15,7 +16,7 @@ function YunoShell() {
   const activeLesson = route.view === 'lesson' ? getLessonById(route.lessonId) : undefined
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#0B0F19] text-slate-100">
+    <div className="flex min-h-dvh flex-col bg-[#F5F5F7] text-[#1D1D1F]">
       <TopNav
         route={route}
         onNavigate={setRoute}
@@ -47,11 +48,12 @@ function YunoShell() {
         )}
       </main>
 
-      <footer className="border-t border-white/[0.06] py-6 text-center text-xs text-slate-500">
-        Yuno 2.0 · Persönlicher visueller Wissensatlas · Echte Geodaten (Natural Earth / d3-geo) · Verifizierte Medien (Wikimedia & YouTube)
+      <footer className="border-t border-black/[0.06] py-6 text-center text-xs font-medium text-[#86868B]">
+        Yuno 2.0 · Persönlicher visueller Wissensatlas
       </footer>
 
       <BackupModal open={backupOpen} onClose={() => setBackupOpen(false)} />
+      <StreakCelebration />
     </div>
   )
 }

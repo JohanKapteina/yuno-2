@@ -1,6 +1,6 @@
 import { Play, Square, Volume2 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import * as Tone from 'tone'
+import { useEffect, useRef, useState } from 'react'
+import { playMelody, playSinglePitch, stopAllAudio, toneDurationToSeconds } from '../../lib/audioEngine'
 
 export interface MusicNoteSpec {
   id: string
@@ -39,122 +39,106 @@ const DEFAULT_PRESETS: MusicPreset[] = [
   {
     id: 'major',
     label: 'C-Dur Dreiklang',
-    description: 'Große Terz (4 Halbtöne) — strahlend & stabil',
+    description: 'Große Terz (4 Halbtöne) — klar & stabil',
     notes: [
       { pitch: 'C4', duration: '4n', timeOffset: 0 },
-      { pitch: 'E4', duration: '4n', timeOffset: 0.25 },
-      { pitch: 'G4', duration: '2n', timeOffset: 0.5 },
+      { pitch: 'E4', duration: '4n', timeOffset: 0.28 },
+      { pitch: 'G4', duration: '2n', timeOffset: 0.56 },
     ],
   },
   {
     id: 'minor',
     label: 'C-Moll Dreiklang',
-    description: 'Kleine Terz (3 Halbtöne) — dramatisch & ernst',
+    description: 'Kleine Terz (3 Halbtöne) — ernst & tief',
     notes: [
       { pitch: 'C4', duration: '4n', timeOffset: 0 },
-      { pitch: 'Eb4', duration: '4n', timeOffset: 0.25 },
-      { pitch: 'G4', duration: '2n', timeOffset: 0.5 },
+      { pitch: 'Eb4', duration: '4n', timeOffset: 0.28 },
+      { pitch: 'G4', duration: '2n', timeOffset: 0.56 },
     ],
   },
   {
     id: 'fanfare',
     label: 'Quinten-Motiv',
-    description: 'Reine Quinte (C → G) — antikes Signal-Intervall',
+    description: 'Reine Quinte (C → G → C5)',
     notes: [
       { pitch: 'C4', duration: '8n', timeOffset: 0 },
-      { pitch: 'G4', duration: '4n', timeOffset: 0.2 },
-      { pitch: 'C5', duration: '2n', timeOffset: 0.5 },
+      { pitch: 'G4', duration: '4n', timeOffset: 0.24 },
+      { pitch: 'C5', duration: '2n', timeOffset: 0.56 },
     ],
   },
 ]
 
 export function MusicLab({
   title = 'Interaktives Sound-Lab',
-  subtitle = 'Klicke Tasten oder Motive an, um Klangstrukturen live mit Tone.js zu hören.',
+  subtitle = 'Klicke Tasten oder Motive an, um Klänge direkt über Web Audio zu hören.',
   presets = DEFAULT_PRESETS,
-  accent = '#8B5CF6',
+  accent = '#0071E3',
 }: MusicLabProps) {
-  const synthRef = useRef<Tone.PolySynth | null>(null)
   const [activeNote, setActiveNote] = useState<string | null>(null)
   const [activePresetId, setActivePresetId] = useState<string | null>(null)
-  const timersRef = useRef<number[]>([])
-
-  const clearTimers = useCallback(() => {
-    for (const id of timersRef.current) window.clearTimeout(id)
-    timersRef.current = []
-  }, [])
+  const cancelRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     return () => {
-      clearTimers()
-      synthRef.current?.dispose()
-      synthRef.current = null
+      cancelRef.current?.()
+      stopAllAudio()
     }
-  }, [clearTimers])
-
-  const ensureSynth = useCallback(async () => {
-    await Tone.start()
-    if (!synthRef.current) {
-      synthRef.current = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.02, decay: 0.15, sustain: 0.35, release: 0.8 },
-      }).toDestination()
-    }
-    return synthRef.current
   }, [])
 
-  const playNote = async (pitch: string) => {
-    const synth = await ensureSynth()
-    synth.triggerAttackRelease(pitch, '4n')
+  const handlePlayNote = (pitch: string) => {
+    cancelRef.current?.()
+    setActivePresetId(null)
+    playSinglePitch(pitch, 0.45)
     setActiveNote(pitch)
-    const tid = window.setTimeout(() => setActiveNote((cur) => (cur === pitch ? null : cur)), 280)
-    timersRef.current.push(tid)
+    window.setTimeout(() => setActiveNote((cur) => (cur === pitch ? null : cur)), 320)
   }
 
-  const playPreset = async (preset: MusicPreset) => {
-    clearTimers()
-    const synth = await ensureSynth()
+  const handlePlayPreset = (preset: MusicPreset) => {
+    cancelRef.current?.()
     setActivePresetId(preset.id)
-    const now = Tone.now()
-
-    let maxOffset = 0
-    for (const n of preset.notes) {
-      synth.triggerAttackRelease(n.pitch, n.duration, now + n.timeOffset)
-      maxOffset = Math.max(maxOffset, n.timeOffset)
-      const onId = window.setTimeout(() => setActiveNote(n.pitch), n.timeOffset * 1000)
-      timersRef.current.push(onId)
-    }
-
-    const doneId = window.setTimeout(() => {
-      setActiveNote(null)
-      setActivePresetId(null)
-    }, (maxOffset + 0.65) * 1000)
-    timersRef.current.push(doneId)
+    const { cancel } = playMelody(
+      preset.notes.map((n) => ({
+        pitch: n.pitch,
+        durationSec: toneDurationToSeconds(n.duration),
+        offsetSec: n.timeOffset,
+      })),
+      (idx) => {
+        if (idx === null) {
+          setActiveNote(null)
+          setActivePresetId(null)
+        } else {
+          setActiveNote(preset.notes[idx]?.pitch ?? null)
+        }
+      },
+    )
+    cancelRef.current = cancel
   }
 
-  const stopAll = () => {
-    clearTimers()
-    synthRef.current?.releaseAll()
+  const handleStop = () => {
+    cancelRef.current?.()
     setActiveNote(null)
     setActivePresetId(null)
   }
 
   return (
-    <div className="editorial-card rounded-2xl p-5">
+    <div className="apple-card rounded-3xl p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold tracking-wider uppercase" style={{ color: accent }}>
+          <div
+            className="flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase"
+            style={{ color: accent }}
+          >
             <Volume2 className="h-4 w-4" />
-            <span>Tone.js Audio-Engine</span>
+            <span>Audio-Studio</span>
           </div>
-          <h4 className="mt-1 text-base font-semibold text-white">{title}</h4>
-          <p className="text-xs text-slate-400">{subtitle}</p>
+          <h4 className="mt-1 text-lg font-extrabold tracking-tight text-[#1D1D1F]">{title}</h4>
+          <p className="text-xs text-[#6E6E73]">{subtitle}</p>
         </div>
         {activePresetId && (
           <button
             type="button"
-            onClick={stopAll}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10"
+            onClick={handleStop}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#F2F2F7] px-3.5 py-1.5 text-xs font-bold text-[#1D1D1F] hover:bg-[#E5E5EA]"
           >
             <Square className="h-3 w-3 fill-current" />
             Stopp
@@ -162,7 +146,6 @@ export function MusicLab({
         )}
       </div>
 
-      {/* Interactive Piano/Tone Pads */}
       <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-9">
         {DEFAULT_KEYS.map((key) => {
           const isActive = activeNote === key.pitch
@@ -170,30 +153,23 @@ export function MusicLab({
             <button
               key={key.id}
               type="button"
-              onClick={() => playNote(key.pitch)}
-              style={
-                isActive
-                  ? {
-                      borderColor: accent,
-                      backgroundColor: `${accent}33`,
-                      boxShadow: `0 0 24px ${accent}44`,
-                    }
-                  : undefined
-              }
-              className={`flex h-16 flex-col items-center justify-between rounded-xl border p-2.5 text-xs font-semibold transition active:scale-95 ${
+              onClick={() => handlePlayNote(key.pitch)}
+              style={isActive ? { borderColor: accent, backgroundColor: `${accent}18` } : undefined}
+              className={`flex h-16 flex-col items-center justify-between rounded-2xl border p-2.5 text-xs font-bold transition active:scale-95 ${
                 key.isSharp
-                  ? 'border-white/15 bg-[#0B0F19] text-slate-300 hover:border-white/30'
-                  : 'border-white/10 bg-[#18223A] text-white hover:border-white/25'
+                  ? 'border-black/10 bg-[#1D1D1F] text-white hover:bg-[#2C2C2E]'
+                  : 'border-black/10 bg-[#F5F5F7] text-[#1D1D1F] hover:bg-[#EBEBF0]'
               }`}
             >
-              <span className="font-mono text-[10px] text-slate-400">{key.pitch}</span>
-              <span className="text-sm">{key.label}</span>
+              <span className={`font-mono text-[10px] ${key.isSharp ? 'text-white/60' : 'text-[#86868B]'}`}>
+                {key.pitch}
+              </span>
+              <span className="text-sm font-extrabold">{key.label}</span>
             </button>
           )
         })}
       </div>
 
-      {/* Preset Motives */}
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         {presets.map((preset) => {
           const playing = activePresetId === preset.id
@@ -201,19 +177,19 @@ export function MusicLab({
             <button
               key={preset.id}
               type="button"
-              onClick={() => playPreset(preset)}
-              className={`flex items-start gap-2.5 rounded-xl border p-3 text-left transition ${
+              onClick={() => handlePlayPreset(preset)}
+              className={`flex items-start gap-2.5 rounded-2xl border p-3.5 text-left transition ${
                 playing
-                  ? 'border-violet-400/60 bg-violet-500/15'
-                  : 'border-white/8 bg-[#0E1525] hover:border-white/20'
+                  ? 'border-[#0071E3] bg-[#E8F2FC]'
+                  : 'border-black/[0.08] bg-[#F5F5F7] hover:bg-[#EFEFF4]'
               }`}
             >
-              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/10 text-violet-300">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0071E3] text-white">
                 <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
               </span>
               <span className="min-w-0">
-                <span className="block text-xs font-semibold text-white">{preset.label}</span>
-                <span className="mt-0.5 block text-[11px] leading-snug text-slate-400">
+                <span className="block text-xs font-bold text-[#1D1D1F]">{preset.label}</span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-[#6E6E73]">
                   {preset.description}
                 </span>
               </span>

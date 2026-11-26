@@ -7,10 +7,9 @@ interface Props {
   onComplete: (result: QuizResult) => void
 }
 
-const PAIR_COLORS = ['#F59E0B', '#38BDF8', '#A855F7', '#10B981', '#EC4899']
+const PAIR_COLORS = ['#0071E3', '#0F766E', '#D97706', '#7C3AED', '#BE185D']
 
 export function VisualConnectQuiz({ card, onComplete }: Props) {
-  // Deterministic non-trivial shuffle for the right column
   const rightItems = useMemo(() => {
     const arr = [...card.pairs]
     if (arr.length >= 2) {
@@ -26,7 +25,6 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
   }, [card.pairs])
 
   const [activeLeftId, setActiveLeftId] = useState<string | null>(null)
-  /** Map: leftPairId -> rightPairId */
   const [connections, setConnections] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
 
@@ -39,7 +37,6 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
     if (submitted || !activeLeftId) return
     setConnections((prev) => {
       const next = { ...prev }
-      // Remove any existing link pointing to the same right item
       for (const [k, v] of Object.entries(next)) {
         if (v === rightId) delete next[k]
       }
@@ -76,8 +73,8 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-        <span className="inline-flex items-center gap-1.5 text-sky-300">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-[#6E6E73]">
+        <span className="inline-flex items-center gap-1.5 font-semibold text-[#0071E3]">
           <Link2 className="h-3.5 w-3.5" />
           Klicke erst links ein Element an, dann das passende Gegenstück rechts.
         </span>
@@ -88,7 +85,7 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
               setConnections({})
               setActiveLeftId(null)
             }}
-            className="inline-flex items-center gap-1 text-slate-400 hover:text-white"
+            className="inline-flex items-center gap-1 font-semibold text-[#6E6E73] hover:text-[#1D1D1F]"
           >
             <RotateCcw className="h-3 w-3" />
             Zurücksetzen
@@ -97,9 +94,8 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_72px_1fr] md:items-center">
-        {/* Left Column */}
         <div className="space-y-2.5">
-          <p className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+          <p className="text-[11px] font-bold tracking-wider text-[#86868B] uppercase">
             {card.leftColumnTitle}
           </p>
           {card.pairs.map((pair, idx) => {
@@ -116,24 +112,28 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
                 onClick={() => handleLeftClick(pair.id)}
                 style={
                   !submitted && (isSelected || linkedRight)
-                    ? { borderColor: color, backgroundColor: `${color}18` }
+                    ? { borderColor: color, backgroundColor: `${color}12` }
                     : undefined
                 }
-                className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3.5 py-3 text-left transition ${
+                className={`flex w-full items-center justify-between gap-2 rounded-2xl border px-4 py-3.5 text-left transition ${
                   isPairCorrect
-                    ? 'border-emerald-500/55 bg-emerald-500/12'
+                    ? 'border-[#86EFAC] bg-[#F0FDF4]'
                     : isPairWrong
-                      ? 'border-rose-500/55 bg-rose-500/12'
-                      : 'border-white/10 bg-[#0E1525] hover:border-white/25'
+                      ? 'border-[#FCA5A5] bg-[#FEF2F2]'
+                      : 'border-black/[0.08] bg-[#F5F5F7] hover:border-black/20'
                 }`}
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">{pair.left}</p>
-                  {pair.leftSub && <p className="text-xs text-slate-400">{pair.leftSub}</p>}
+                  <p className="text-sm font-bold text-[#1D1D1F]">{pair.left}</p>
+                  {pair.leftSub && <p className="text-xs text-[#6E6E73]">{pair.leftSub}</p>}
                 </div>
                 <span
-                  style={{ backgroundColor: linkedRight || isSelected ? color : 'rgba(255,255,255,0.12)' }}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-bold text-[#0B0F19]"
+                  style={{
+                    backgroundColor: linkedRight || isSelected ? color : '#E5E5EA',
+                  }}
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-bold ${
+                    linkedRight || isSelected ? 'text-white' : 'text-[#515154]'
+                  }`}
                 >
                   {idx + 1}
                 </span>
@@ -142,7 +142,6 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
           })}
         </div>
 
-        {/* Center SVG Connection Bridge (Desktop) */}
         <div className="hidden h-full md:block">
           <svg
             viewBox={`0 0 72 ${card.pairs.length * 76}`}
@@ -158,8 +157,8 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
               const y2 = 44 + rightIdx * 72
               const strokeColor = submitted
                 ? targetRightId === leftPair.id
-                  ? '#10B981'
-                  : '#F43F5E'
+                  ? '#16A34A'
+                  : '#DC2626'
                 : getColorForLeft(leftPair.id)
               return (
                 <path
@@ -167,7 +166,7 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
                   d={`M 0 ${y1} C 36 ${y1}, 36 ${y2}, 72 ${y2}`}
                   fill="none"
                   stroke={strokeColor}
-                  strokeWidth={2.6}
+                  strokeWidth={2.8}
                   strokeLinecap="round"
                 />
               )
@@ -175,9 +174,8 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
           </svg>
         </div>
 
-        {/* Right Column */}
         <div className="space-y-2.5">
-          <p className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+          <p className="text-[11px] font-bold tracking-wider text-[#86868B] uppercase">
             {card.rightColumnTitle}
           </p>
           {rightItems.map((pair) => {
@@ -194,30 +192,30 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
                 onClick={() => handleRightClick(pair.id)}
                 style={
                   !submitted && color
-                    ? { borderColor: color, backgroundColor: `${color}18` }
+                    ? { borderColor: color, backgroundColor: `${color}12` }
                     : undefined
                 }
-                className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition ${
+                className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition ${
                   isPairCorrect
-                    ? 'border-emerald-500/55 bg-emerald-500/12'
+                    ? 'border-[#86EFAC] bg-[#F0FDF4]'
                     : isPairWrong
-                      ? 'border-rose-500/55 bg-rose-500/12'
+                      ? 'border-[#FCA5A5] bg-[#FEF2F2]'
                       : activeLeftId
-                        ? 'cursor-pointer border-indigo-400/40 bg-[#121B30] hover:border-indigo-300'
-                        : 'border-white/10 bg-[#0E1525]'
+                        ? 'cursor-pointer border-[#0071E3]/40 bg-[#F0F7FF] hover:border-[#0071E3]'
+                        : 'border-black/[0.08] bg-[#F5F5F7]'
                 }`}
               >
                 <span
-                  style={{ backgroundColor: color ?? 'rgba(255,255,255,0.1)' }}
+                  style={{ backgroundColor: color ?? '#E5E5EA' }}
                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-bold ${
-                    color ? 'text-[#0B0F19]' : 'text-slate-400'
+                    color ? 'text-white' : 'text-[#6E6E73]'
                   }`}
                 >
                   {linkedIdx >= 0 ? linkedIdx + 1 : '·'}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">{pair.right}</p>
-                  {pair.rightSub && <p className="text-xs text-slate-400">{pair.rightSub}</p>}
+                  <p className="text-sm font-bold text-[#1D1D1F]">{pair.right}</p>
+                  {pair.rightSub && <p className="text-xs text-[#6E6E73]">{pair.rightSub}</p>}
                 </div>
               </button>
             )
@@ -231,24 +229,24 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
             type="button"
             disabled={!allLinked}
             onClick={handleConfirm}
-            className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:opacity-40"
+            className="rounded-full bg-[#0071E3] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#0077ED] disabled:opacity-40"
           >
             Verbindungen prüfen ({Object.keys(connections).length}/{card.pairs.length})
           </button>
         </div>
       ) : (
         <div
-          className={`rounded-xl border p-4 text-sm ${
+          className={`rounded-2xl border p-4 text-sm ${
             allCorrect
-              ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-100'
-              : 'border-rose-500/35 bg-rose-500/10 text-rose-100'
+              ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#14532D]'
+              : 'border-[#FECACA] bg-[#FEF2F2] text-[#7F1D1D]'
           }`}
         >
-          <div className="flex items-center gap-2 font-semibold">
+          <div className="flex items-center gap-2 font-bold">
             {allCorrect ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
             ) : (
-              <XCircle className="h-4 w-4 text-rose-400" />
+              <XCircle className="h-4 w-4 text-[#DC2626]" />
             )}
             <span>
               {allCorrect
@@ -256,7 +254,7 @@ export function VisualConnectQuiz({ card, onComplete }: Props) {
                 : 'Einige Verknüpfungen waren vertauscht — prüfe die markierten Paare.'}
             </span>
           </div>
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{card.explanation}</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#3A3A3C]">{card.explanation}</p>
         </div>
       )}
     </div>

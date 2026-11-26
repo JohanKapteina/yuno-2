@@ -43,32 +43,31 @@ export function SliderEstimateQuiz({ card, onComplete }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-white/10 bg-[#0E1525] p-5">
+      <div className="rounded-3xl border border-black/[0.08] bg-[#F5F5F7] p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-amber-400" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#6E6E73]">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-[#0071E3]" />
             Deine Schätzung
           </span>
-          <span className="font-mono text-2xl font-bold text-white sm:text-3xl">
+          <span className="font-apple-black text-3xl text-[#1D1D1F] tabular-nums sm:text-4xl">
             {formatEstimateValue(value, card)}
           </span>
         </div>
 
-        {/* Visual Track + Revealed Tolerance Band */}
         <div className="relative mt-6 mb-3">
           {submitted && (
-            <div className="pointer-events-none absolute -top-3 right-0 left-0 h-3">
+            <div className="pointer-events-none absolute -top-3.5 right-0 left-0 h-3">
               <div
                 style={{ left: `${bandLeftPct}%`, width: `${bandWidthPct}%` }}
-                className="absolute top-0 h-full rounded-full bg-emerald-500/30 ring-1 ring-emerald-400/60"
+                className="absolute top-0 h-full rounded-full bg-[#16A34A]/25 ring-1 ring-[#16A34A]"
               />
               <div
                 style={{ left: `${targetPct}%` }}
-                className="absolute -top-1 h-5 w-0.5 -translate-x-1/2 bg-emerald-400"
+                className="absolute -top-1 h-5 w-0.5 -translate-x-1/2 bg-[#16A34A]"
               />
               <div
                 style={{ left: `${userPct}%` }}
-                className={`absolute -top-1 h-5 w-0.5 -translate-x-1/2 ${isHit ? 'bg-emerald-300' : 'bg-rose-400'}`}
+                className={`absolute -top-1 h-5 w-0.5 -translate-x-1/2 ${isHit ? 'bg-[#16A34A]' : 'bg-[#DC2626]'}`}
               />
             </div>
           )}
@@ -82,41 +81,45 @@ export function SliderEstimateQuiz({ card, onComplete }: Props) {
             disabled={submitted}
             onChange={(e) => setValue(Number(e.target.value))}
             className="yuno-slider w-full"
-            style={{ ['--slider-accent' as string]: '#F59E0B' }}
+            style={{ ['--slider-accent' as string]: '#0071E3' }}
           />
 
-          <div className="mt-2 flex justify-between font-mono text-[11px] text-slate-500">
+          <div className="mt-2 flex justify-between font-mono text-[11px] font-medium text-[#6E6E73]">
             <span>{formatEstimateValue(card.min, card)}</span>
-            <span>Toleranz: ±{card.tolerance.toLocaleString('de-DE')} {card.unit}</span>
+            <span>
+              Toleranz: ±{card.tolerance.toLocaleString('de-DE')} {card.unit}
+            </span>
             <span>{formatEstimateValue(card.max, card)}</span>
           </div>
         </div>
       </div>
 
       {!submitted ? (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-slate-400">{card.hint ?? 'Ziehe den Regler an die passende Position.'}</span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-xs font-medium text-[#6E6E73]">
+            {card.hint ?? 'Ziehe den Regler an die passende Position.'}
+          </span>
           <button
             type="button"
             onClick={handleConfirm}
-            className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400"
+            className="rounded-full bg-[#0071E3] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#0077ED]"
           >
             Schätzung prüfen
           </button>
         </div>
       ) : (
         <div
-          className={`rounded-xl border p-4 text-sm ${
+          className={`rounded-2xl border p-4 text-sm ${
             isHit
-              ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-100'
-              : 'border-rose-500/35 bg-rose-500/10 text-rose-100'
+              ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#14532D]'
+              : 'border-[#FECACA] bg-[#FEF2F2] text-[#7F1D1D]'
           }`}
         >
-          <div className="flex items-center gap-2 font-semibold">
+          <div className="flex items-center gap-2 font-bold">
             {isHit ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
             ) : (
-              <XCircle className="h-4 w-4 text-rose-400" />
+              <XCircle className="h-4 w-4 text-[#DC2626]" />
             )}
             <span>
               {isHit
@@ -124,7 +127,7 @@ export function SliderEstimateQuiz({ card, onComplete }: Props) {
                 : `Abweichung: ${diff.toLocaleString('de-DE')} ${card.unit}. Zielwert: ${formatEstimateValue(card.targetValue, card)}.`}
             </span>
           </div>
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{card.explanation}</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#3A3A3C]">{card.explanation}</p>
         </div>
       )}
     </div>

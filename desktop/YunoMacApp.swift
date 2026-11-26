@@ -20,7 +20,7 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         webView.allowsBackForwardNavigationGestures = true
         webView.setValue(false, forKey: "drawsBackground")
 
-        let bgColor = NSColor(red: 11.0 / 255.0, green: 15.0 / 255.0, blue: 25.0 / 255.0, alpha: 1.0)
+        let bgColor = NSColor(red: 245.0 / 255.0, green: 245.0 / 255.0, blue: 247.0 / 255.0, alpha: 1.0)
 
         window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1320, height: 860),
@@ -28,8 +28,8 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
             backing: .buffered,
             defer: false
         )
-        window.title = "Yuno 2.0 — Visueller Wissensatlas"
-        window.appearance = NSAppearance(named: .darkAqua)
+        window.title = "Yuno 2.0"
+        window.appearance = NSAppearance(named: .aqua)
         window.backgroundColor = bgColor
         window.titlebarAppearsTransparent = false
         window.minSize = NSSize(width: 900, height: 620)
@@ -47,7 +47,7 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
     }
 
     @objc private func reloadPage() {
-        webView.reload()
+        webView.reloadFromOrigin()
     }
 
     @objc private func openInBrowser() {
@@ -55,14 +55,13 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
     }
 
     private func loadApp() {
-        let request = URLRequest(url: webURL, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 20)
+        let request = URLRequest(url: webURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         webView.load(request)
     }
 
     private func setupMainMenu() {
         let mainMenu = NSMenu()
 
-        // App Menu
         let appMenuItem = NSMenuItem()
         mainMenu.addItem(appMenuItem)
         let appMenu = NSMenu()
@@ -73,7 +72,6 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         appMenu.addItem(withTitle: "Yuno 2.0 beenden", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appMenuItem.submenu = appMenu
 
-        // Edit Menu (enables Copy/Paste inside web inputs)
         let editMenuItem = NSMenuItem()
         mainMenu.addItem(editMenuItem)
         let editMenu = NSMenu(title: "Bearbeiten")
@@ -83,7 +81,6 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         editMenu.addItem(withTitle: "Alles auswählen", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editMenuItem.submenu = editMenu
 
-        // View Menu
         let viewMenuItem = NSMenuItem()
         mainMenu.addItem(viewMenuItem)
         let viewMenu = NSMenu(title: "Ansicht")
@@ -91,7 +88,6 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         viewMenu.addItem(withTitle: "Vollbild ein/aus", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
         viewMenuItem.submenu = viewMenu
 
-        // Window Menu
         let windowMenuItem = NSMenuItem()
         mainMenu.addItem(windowMenuItem)
         let windowMenu = NSMenu(title: "Fenster")
@@ -102,7 +98,6 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         NSApp.mainMenu = mainMenu
     }
 
-    // Open target="_blank" external links (Wikimedia, YouTube) in default macOS browser
     func webView(
         _ webView: WKWebView,
         createWebViewWith configuration: WKWebViewConfiguration,
@@ -115,7 +110,6 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         return nil
     }
 
-    // Support <input type="file"> for JSON Backup Import inside WKWebView
     func webView(
         _ webView: WKWebView,
         runOpenPanelWith parameters: WKOpenPanelParameters,
@@ -131,15 +125,14 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         }
     }
 
-    // Friendly offline/retry screen if internet is temporarily unavailable
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         let html = """
         <!doctype html>
         <html lang="de"><head><meta charset="utf-8"><style>
-        body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0B0F19;color:#F1F5F9;font-family:-apple-system,BlinkMacSystemFont,sans-serif;}
-        .card{max-width:440px;padding:32px;border-radius:20px;background:#131B2E;border:1px solid rgba(255,255,255,0.08);text-align:center;}
-        h2{margin:0 0 8px;font-size:20px;} p{color:#94A3B8;font-size:14px;line-height:1.5;}
-        button{margin-top:16px;background:#6366F1;color:#fff;border:0;padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer;}
+        body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#F5F5F7;color:#1D1D1F;font-family:-apple-system,BlinkMacSystemFont,sans-serif;}
+        .card{max-width:440px;padding:32px;border-radius:24px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);text-align:center;box-shadow:0 12px 32px rgba(0,0,0,0.06);}
+        h2{margin:0 0 8px;font-size:20px;font-weight:800;} p{color:#6E6E73;font-size:14px;line-height:1.5;}
+        button{margin-top:16px;background:#0071E3;color:#fff;border:0;padding:10px 22px;border-radius:999px;font-weight:700;cursor:pointer;}
         </style></head><body><div class="card">
         <h2>Yuno 2.0 konnte nicht geladen werden</h2>
         <p>\(error.localizedDescription)</p>
