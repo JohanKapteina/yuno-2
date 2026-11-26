@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "deploy": "./scripts/deploy-web.sh",
+    "build:mac": "./desktop/build-mac-app.sh",
     "lint": "oxlint",
     "preview": "vite preview"
   },
