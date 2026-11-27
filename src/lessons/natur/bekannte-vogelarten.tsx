@@ -1497,10 +1497,10 @@ const bekannteVogelartenLesson: LessonDefinition = {
       explanation:
         'Zaunkönig (~9,5 cm) < Rotkehlchen (~14 cm) < Elster (~46 cm) < Schwan (~150 cm).',
       items: [
-        { id: 's1', label: 'Zaunkönig', sublabel: 'Steil aufgestellter Mini-Schwanz', order: 0 },
-        { id: 's2', label: 'Rotkehlchen', sublabel: 'Kugelige orange Brust', order: 1 },
-        { id: 's3', label: 'Elster', sublabel: 'Schwarz-weiß mit langem Schwanz', order: 2 },
-        { id: 's4', label: 'Schwan (Höckerschwan)', sublabel: 'Schwerer weißer Wasservogel', order: 3 },
+        { id: 's1', label: 'Zaunkönig', sublabel: 'Steil aufgestellter Mini-Schwanz', revealLabel: '~9,5 cm', order: 0 },
+        { id: 's2', label: 'Rotkehlchen', sublabel: 'Kugelige orange Brust', revealLabel: '~14 cm', order: 1 },
+        { id: 's3', label: 'Elster', sublabel: 'Schwarz-weiß mit langem Schwanz', revealLabel: '~46 cm', order: 2 },
+        { id: 's4', label: 'Schwan (Höckerschwan)', sublabel: 'Weißer Wasservogel', revealLabel: '~150 cm', order: 3 },
       ],
     },
     {

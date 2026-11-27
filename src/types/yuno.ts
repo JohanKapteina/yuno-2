@@ -72,6 +72,8 @@ export interface TimelineSortQuizCard extends BaseQuizCard {
     id: string
     label: string
     sublabel?: string
+    /** Hidden until after confirmation (e.g. exact year "1769" or size "150 cm") */
+    revealLabel?: string
     /** Canonical 0-based chronological order */
     order: number
   }>

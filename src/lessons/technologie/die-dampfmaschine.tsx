@@ -1125,10 +1125,34 @@ const dieDampfmaschineLesson: LessonDefinition = {
       explanation:
         'Zuerst gab es einfache Versuche im Alten Griechenland, dann baute Newcomen 1712 die erste brauchbare Maschine, James Watt verbesserte sie ab 1769, und 1814 fuhr die erste Dampflokomotive.',
       items: [
-        { id: 'd1', label: 'Erste einfache Dampfversuche', sublabel: 'Antike · Altes Griechenland', order: 0 },
-        { id: 'd2', label: 'Thomas Newcomens Bergwerkspumpe', sublabel: '1712 in England', order: 1 },
-        { id: 'd3', label: 'James Watts entscheidende Verbesserung', sublabel: 'ab 1769 · sparsamer & stärker', order: 2 },
-        { id: 'd4', label: 'Fahrt der ersten Dampflokomotive', sublabel: '1814 in England', order: 3 },
+        {
+          id: 'd1',
+          label: 'Erste einfache Dampfversuche',
+          sublabel: 'Altes Griechenland',
+          revealLabel: 'Antike',
+          order: 0,
+        },
+        {
+          id: 'd2',
+          label: 'Thomas Newcomens Bergwerkspumpe',
+          sublabel: 'Wasserpumpen in England',
+          revealLabel: '1712',
+          order: 1,
+        },
+        {
+          id: 'd3',
+          label: 'James Watts entscheidende Verbesserung',
+          sublabel: 'Sparsamer & stärker für Fabriken',
+          revealLabel: 'ab 1769',
+          order: 2,
+        },
+        {
+          id: 'd4',
+          label: 'Fahrt der ersten Dampflokomotive',
+          sublabel: 'Schneller Transport in England',
+          revealLabel: '1814',
+          order: 3,
+        },
       ],
     },
     {
