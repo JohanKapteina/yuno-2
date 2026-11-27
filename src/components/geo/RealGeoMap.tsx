@@ -247,8 +247,8 @@ export function RealGeoMap({
     return Math.hypot(p2[0] - p1[0], p2[1] - p1[1])
   }, [circleOverlay, baseProjection])
 
-  // Keep pins, text, and strokes crisp and proportional at any zoom level (1x .. 8x)
-  const invScale = 1 / Math.pow(zoom, 0.78)
+  // Keep pins, text, and strokes crisp and effortlessly legible at any zoom level (1x .. 8x)
+  const invScale = 1 / Math.pow(zoom, 0.85)
 
   return (
     <div className="overflow-hidden rounded-3xl border border-black/[0.08] bg-white shadow-[0_8px_28px_-14px_rgba(0,0,0,0.08)]">
@@ -385,38 +385,41 @@ export function RealGeoMap({
                   className={onMarkerClick ? 'cursor-pointer' : undefined}
                 >
                   {m.pulse && (
-                    <circle r={14} fill={color} opacity={0.24}>
-                      <animate attributeName="r" from="6" to="20" dur="2s" repeatCount="indefinite" />
+                    <circle r={16} fill={color} opacity={0.24}>
+                      <animate attributeName="r" from="8" to="24" dur="2s" repeatCount="indefinite" />
                       <animate attributeName="opacity" from="0.45" to="0" dur="2s" repeatCount="indefinite" />
                     </circle>
                   )}
                   <circle
-                    r={m.active ? 7.5 : m.muted ? 4.5 : 6}
+                    r={m.active ? 9 : m.muted ? 5.5 : 7.5}
                     fill={m.muted ? '#86868B' : color}
                     stroke="#FFFFFF"
-                    strokeWidth={2.5}
+                    strokeWidth={3}
                   />
-                  <g transform="translate(11, 4)">
+                  <g transform="translate(14, 6)">
                     <text
-                      className="fill-[#1D1D1F] text-[11.5px] font-bold"
+                      className="fill-[#1D1D1F] font-extrabold"
+                      fontSize={m.muted ? 14.5 : 18}
                       style={{
                         paintOrder: 'stroke',
                         stroke: '#FFFFFF',
-                        strokeWidth: 4,
+                        strokeWidth: 6,
                         strokeLinejoin: 'round',
-                        opacity: m.muted ? 0.65 : 1,
+                        opacity: m.muted ? 0.78 : 1,
                       }}
                     >
                       {m.label}
                     </text>
                     {m.sublabel && (
                       <text
-                        y={13}
-                        className="fill-[#515154] text-[10px] font-semibold"
+                        y={18}
+                        className="fill-[#3A3A3C] font-bold"
+                        fontSize={13.5}
                         style={{
                           paintOrder: 'stroke',
                           stroke: '#FFFFFF',
-                          strokeWidth: 3.5,
+                          strokeWidth: 5,
+                          strokeLinejoin: 'round',
                         }}
                       >
                         {m.sublabel}
