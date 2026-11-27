@@ -4,7 +4,10 @@ import WebKit
 final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNavigationDelegate {
     private var window: NSWindow!
     private var webView: WKWebView!
+    private var ytLoginWindow: NSWindow?
     private let webURL = URL(string: "https://johankapteina.github.io/yuno-2/")!
+    private let safariUserAgent =
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMainMenu()
@@ -16,7 +19,7 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         config.mediaTypesRequiringUserActionForPlayback = []
 
         webView = WKWebView(frame: .zero, configuration: config)
-        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
+        webView.customUserAgent = safariUserAgent
         webView.uiDelegate = self
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
@@ -56,6 +59,37 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         NSWorkspace.shared.open(webURL)
     }
 
+    /// Opens a persistent YouTube login window sharing the same WKWebsiteDataStore
+    /// so YouTube Premium works ad-free inside embedded videos permanently.
+    @objc private func openYouTubeLogin() {
+        if let existing = ytLoginWindow {
+            existing.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let loginConfig = WKWebViewConfiguration()
+        loginConfig.websiteDataStore = .default()
+        let loginWebView = WKWebView(frame: .zero, configuration: loginConfig)
+        loginWebView.customUserAgent = safariUserAgent
+
+        let loginWin = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 680),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        loginWin.title = "YouTube Premium anmelden (einmalig)"
+        loginWin.appearance = NSAppearance(named: .aqua)
+        loginWin.center()
+        loginWin.contentView = loginWebView
+        loginWin.isReleasedWhenClosed = false
+        loginWin.makeKeyAndOrderFront(nil)
+        ytLoginWindow = loginWin
+
+        let url = URL(string: "https://www.youtube.com")!
+        loginWebView.load(URLRequest(url: url))
+    }
+
     private func loadApp() {
         let request = URLRequest(url: webURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         webView.load(request)
@@ -67,6 +101,7 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         let appMenuItem = NSMenuItem()
         mainMenu.addItem(appMenuItem)
         let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "YouTube Premium anmelden…", action: #selector(openYouTubeLogin), keyEquivalent: "y")
         appMenu.addItem(withTitle: "Yuno 2.0 im Browser öffnen", action: #selector(openInBrowser), keyEquivalent: "o")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Yuno 2.0 ausblenden", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
