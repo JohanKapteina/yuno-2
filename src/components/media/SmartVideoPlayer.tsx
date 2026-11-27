@@ -30,7 +30,11 @@ export function SmartVideoPlayer({
   const [reloadNonce, setReloadNonce] = useState(0)
 
   const durationSec = Math.max(1, end - start)
-  const embedSrc = `https://www.youtube-nocookie.com/embed/${videoId}?start=${start}&end=${end}&autoplay=1&rel=0&modestbranding=1`
+  const originParam =
+    typeof window !== 'undefined' && window.location.origin.startsWith('http')
+      ? `&origin=${encodeURIComponent(window.location.origin)}`
+      : ''
+  const embedSrc = `https://www.youtube-nocookie.com/embed/${videoId}?start=${start}&end=${end}&autoplay=1&rel=0&modestbranding=1&playsinline=1${originParam}`
   const directWatchUrl = `https://www.youtube.com/watch?v=${videoId}&t=${start}s`
   const posterUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
 
@@ -80,7 +84,8 @@ export function SmartVideoPlayer({
             key={`${videoId}-${start}-${end}-${reloadNonce}`}
             src={embedSrc}
             title={title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
             className="h-full w-full border-0"
           />

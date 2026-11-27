@@ -12,9 +12,11 @@ final class YunoAppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNa
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
         config.preferences.setValue(true, forKey: "fullScreenEnabled")
+        config.allowsAirPlayForMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
 
         webView = WKWebView(frame: .zero, configuration: config)
+        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
         webView.uiDelegate = self
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
