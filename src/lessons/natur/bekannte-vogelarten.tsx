@@ -1,7 +1,11 @@
 import {
+  ArrowLeft,
+  ArrowRight,
   Binoculars,
   CheckCircle2,
+  ExternalLink,
   Eye,
+  EyeOff,
   Film,
   HelpCircle,
   Layers,
@@ -467,76 +471,169 @@ function getBirdById(id: string): BirdSpecies {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  SCREEN 1 (Option A): Visueller Bestimmungs-Atlas aller 27 Arten            */
+/*  SCREEN 1: Studier- & Merk-Studio (Seitenleiste + Slider + Abdeck-Modus)   */
 /* -------------------------------------------------------------------------- */
+
+const DE_WIKI_SLUG: Record<string, string> = {
+  spatz: 'Haussperling',
+  schwan: 'Höckerschwan',
+  schwalbe: 'Rauchschwalbe',
+  specht: 'Buntspecht',
+  storch: 'Weißstorch',
+  rabe: 'Kolkrabe',
+  moewe: 'Silbermöwe',
+  kleiber: 'Kleiber_(Art)',
+  star: 'Star_(Art)',
+}
+
+const MASTERY_STORAGE_KEY = 'yuno2_birds_mastery_v1'
+
+type MasteryStatus = 'known' | 'review'
+
+function loadBirdMastery(): Record<string, MasteryStatus> {
+  try {
+    const raw = localStorage.getItem(MASTERY_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, MasteryStatus>
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function getGermanWikiUrl(bird: BirdSpecies): string {
+  const slug = DE_WIKI_SLUG[bird.id] ?? bird.name
+  return `https://de.wikipedia.org/wiki/${encodeURIComponent(slug)}`
+}
+
+function getNabuSearchUrl(bird: BirdSpecies): string {
+  const query = bird.name.split(' (')[0]
+  return `https://www.nabu.de/suche/index.html?q=${encodeURIComponent(query)}`
+}
 
 function Screen1FieldGuideAtlas() {
   const [world, setWorld] = useState<BirdWorld | 'alle'>('alle')
   const [colorFilter, setColorFilter] = useState<BirdColor | 'all'>('all')
+  const [onlyUnmastered, setOnlyUnmastered] = useState(false)
+  const [studyQuizMode, setStudyQuizMode] = useState(false)
+  const [revealed, setRevealed] = useState(true)
+  const [mastery, setMastery] = useState<Record<string, MasteryStatus>>(loadBirdMastery)
   const [selectedId, setSelectedId] = useState<string>('blaumeise')
-  const [discovered, setDiscovered] = useState<string[]>(['blaumeise'])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(MASTERY_STORAGE_KEY, JSON.stringify(mastery))
+    } catch {
+      // ignore
+    }
+  }, [mastery])
 
   const filteredBirds = useMemo(() => {
     return ALL_BIRDS.filter((b) => {
       if (world !== 'alle' && b.world !== world) return false
       if (colorFilter !== 'all' && !b.colors.includes(colorFilter)) return false
+      if (onlyUnmastered && mastery[b.id] === 'known') return false
       return true
     })
-  }, [world, colorFilter])
+  }, [world, colorFilter, onlyUnmastered, mastery])
 
-  const selected = getBirdById(selectedId)
+  const activeList = filteredBirds.length > 0 ? filteredBirds : ALL_BIRDS
+  const currentIdx = Math.max(
+    0,
+    activeList.findIndex((b) => b.id === selectedId),
+  )
+  const selected = activeList[currentIdx] ?? activeList[0]
+  const knownCount = ALL_BIRDS.filter((b) => mastery[b.id] === 'known').length
 
-  const handleSelectBird = (bird: BirdSpecies) => {
-    setSelectedId(bird.id)
-    setDiscovered((prev) => (prev.includes(bird.id) ? prev : [...prev, bird.id]))
+  const selectBirdByIndex = (nextIdx: number) => {
+    const safeIdx = ((nextIdx % activeList.length) + activeList.length) % activeList.length
+    setSelectedId(activeList[safeIdx].id)
+    setRevealed(!studyQuizMode)
   }
 
+  const handleToggleStudyMode = (quizMode: boolean) => {
+    setStudyQuizMode(quizMode)
+    setRevealed(!quizMode)
+  }
+
+  const markStatusAndAdvance = (status: MasteryStatus) => {
+    setMastery((prev) => ({ ...prev, [selected.id]: status }))
+    if (activeList.length > 1) {
+      selectBirdByIndex(currentIdx + 1)
+    }
+  }
+
+  const showDetails = !studyQuizMode || revealed
+
   return (
-    <div className="space-y-5">
-      {/* Spotlight Card for Active Bird */}
-      <div className="apple-card grid gap-5 rounded-3xl p-5 lg:grid-cols-[1.15fr_1fr] lg:items-center">
-        <SmartMediaImage
-          src={selected.src}
-          wikiTitle={selected.wikiTitle}
-          wikiLang="en"
-          alt={`${selected.name} (${selected.latin})`}
-          caption={`${selected.name} (${selected.latin})`}
-          credit="Wikimedia Commons"
-          aspectClass="aspect-[16/10]"
-          className="shadow-none"
-        />
+    <div className="space-y-4">
+      {/* Top Study Mode Bar + Progress */}
+      <div className="apple-card flex flex-wrap items-center justify-between gap-3 rounded-3xl p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-full bg-[#EFEFF4] p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => handleToggleStudyMode(false)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-bold transition ${
+                !studyQuizMode ? 'bg-white text-[#1D1D1F] shadow-xs' : 'text-[#6E6E73]'
+              }`}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Lernmodus
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleStudyMode(true)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-bold transition ${
+                studyQuizMode ? 'bg-[#0071E3] text-white shadow-xs' : 'text-[#6E6E73]'
+              }`}
+            >
+              <EyeOff className="h-3.5 w-3.5" />
+              Abdeck-Modus (Selbsttest)
+            </button>
+          </div>
 
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-bold text-[#15803D]">
-              {selected.habitat}
+          <button
+            type="button"
+            onClick={() => setOnlyUnmastered((v) => !v)}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
+              onlyUnmastered
+                ? 'bg-[#FF6B00] text-white'
+                : 'bg-[#F5F5F7] text-[#515154] hover:bg-[#EFEFF4]'
+            }`}
+          >
+            {onlyUnmastered ? 'Filter: Nur offene aktiv' : 'Nur offene üben'}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-24 overflow-hidden rounded-full bg-[#EFEFF4]">
+              <div
+                className="h-full rounded-full bg-[#16A34A] transition-all duration-300"
+                style={{ width: `${Math.round((knownCount / ALL_BIRDS.length) * 100)}%` }}
+              />
+            </div>
+            <span className="font-mono text-xs font-extrabold text-[#1D1D1F] tabular-nums">
+              {knownCount}/27 sitzen
             </span>
-            <span className="font-mono text-xs font-bold text-[#6E6E73]">
-              Größe: ~{selected.sizeCm} cm · Entdeckt: {discovered.length}/27
-            </span>
           </div>
-
-          <div>
-            <h3 className="font-apple-black text-3xl text-[#1D1D1F]">{selected.name}</h3>
-            <p className="font-mono text-xs font-medium text-[#86868B] italic">{selected.latin}</p>
-          </div>
-
-          <div className="rounded-2xl bg-[#E8F2FC] p-3.5">
-            <p className="text-[11px] font-bold tracking-wide text-[#0071E3] uppercase">
-              1-Sekunden-Erkennungsmerkmal
-            </p>
-            <p className="mt-0.5 text-sm font-extrabold text-[#1D1D1F]">{selected.signature}</p>
-          </div>
-
-          <p className="text-xs leading-relaxed font-medium text-[#515154]">{selected.detail}</p>
-          <p className="rounded-2xl bg-[#F5F5F7] p-3 text-xs font-medium text-[#515154]">
-            <strong className="text-[#1D1D1F]">Verwechslungs-Tipp:</strong> {selected.lookalikeTip}
-          </p>
+          {knownCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setMastery({})}
+              className="inline-flex items-center gap-1 rounded-full bg-[#F2F2F7] px-2.5 py-1 text-[11px] font-bold text-[#6E6E73] hover:text-[#1D1D1F]"
+              title="Lernstatus der 27 Vögel zurücksetzen"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Filters: 5 Worlds + Color Chips */}
-      <div className="space-y-2.5">
+      {/* Compact Group & Color Filters */}
+      <div className="space-y-2">
         <div className="flex flex-wrap gap-1.5">
           {WORLD_TABS.map((t) => (
             <button
@@ -573,43 +670,220 @@ function Screen1FieldGuideAtlas() {
         </div>
       </div>
 
-      {/* All 27 Birds Visual Grid */}
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {filteredBirds.map((bird) => {
-          const isSelected = bird.id === selectedId
-          const seen = discovered.includes(bird.id)
-          return (
-            <button
-              key={bird.id}
-              type="button"
-              onClick={() => handleSelectBird(bird)}
-              className={`group overflow-hidden rounded-2xl border bg-white text-left transition ${
-                isSelected
-                  ? 'border-[#0071E3] ring-2 ring-[#0071E3]/25'
-                  : 'border-black/[0.07] hover:border-black/20'
-              }`}
-            >
-              <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F2F2F7] p-1">
-                <img
-                  src={bird.src}
-                  alt={bird.name}
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  className="h-full w-full object-contain object-center transition duration-300 group-hover:scale-105"
-                />
-                {seen && (
-                  <span className="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/90 text-[#16A34A] shadow-xs">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+      {/* Master-Detail Study Studio: Left Side-Rail + Slider | Right Large Study Card */}
+      <div className="grid gap-5 lg:grid-cols-[290px_1fr] lg:items-start">
+        {/* LEFT SIDE-RAIL: Slider + Scrollable Bird List */}
+        <div className="apple-card flex flex-col gap-3 rounded-3xl p-4">
+          {/* Quick Bird Slider */}
+          <div className="space-y-2 border-b border-black/[0.06] pb-3">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="text-[#6E6E73]">Vogel-Slider</span>
+              <span className="font-mono text-[#0071E3] tabular-nums">
+                {currentIdx + 1} / {activeList.length}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => selectBirdByIndex(currentIdx - 1)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F2F2F7] text-[#1D1D1F] transition hover:bg-[#1D1D1F] hover:text-white"
+                aria-label="Vorheriger Vogel"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={Math.max(0, activeList.length - 1)}
+                step={1}
+                value={currentIdx}
+                onChange={(e) => selectBirdByIndex(Number(e.target.value))}
+                className="yuno-slider w-full"
+                style={{ ['--slider-accent' as string]: '#0071E3' }}
+                aria-label="Vogel auswählen"
+              />
+              <button
+                type="button"
+                onClick={() => selectBirdByIndex(currentIdx + 1)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F2F2F7] text-[#1D1D1F] transition hover:bg-[#1D1D1F] hover:text-white"
+                aria-label="Nächster Vogel"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable Side-List of Birds */}
+          <div className="flex max-h-[480px] gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1">
+            {activeList.map((bird, idx) => {
+              const isSelected = bird.id === selected.id
+              const status = mastery[bird.id]
+              return (
+                <button
+                  key={bird.id}
+                  type="button"
+                  onClick={() => selectBirdByIndex(idx)}
+                  className={`flex shrink-0 items-center gap-2.5 rounded-2xl border p-2 text-left transition lg:w-full ${
+                    isSelected
+                      ? 'border-[#0071E3] bg-[#E8F2FC]'
+                      : 'border-black/[0.06] bg-[#F5F5F7] hover:bg-[#EFEFF4]'
+                  }`}
+                >
+                  <div className="h-11 w-14 shrink-0 overflow-hidden rounded-xl bg-white p-0.5">
+                    <img
+                      src={bird.src}
+                      alt={bird.name}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      className="h-full w-full object-contain object-center"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1 pr-1">
+                    <p className="truncate text-xs font-extrabold text-[#1D1D1F]">
+                      {studyQuizMode && !revealed && isSelected ? `Vogel #${idx + 1} (?)` : bird.name}
+                    </p>
+                    <p className="truncate font-mono text-[10px] font-semibold text-[#86868B]">
+                      {bird.sizeCm} cm · {bird.habitat.split(' ')[0]}
+                    </p>
+                  </div>
+                  {status === 'known' && (
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[#16A34A]" />
+                  )}
+                  {status === 'review' && (
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#FF6B00]" title="Nochmal üben" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* RIGHT FOCUS STAGE: Crisp Photo + Memory Anchors + Fact Links */}
+        <div className="apple-card space-y-5 rounded-3xl p-5 sm:p-6">
+          <SmartMediaImage
+            src={selected.src}
+            wikiTitle={selected.wikiTitle}
+            wikiLang="en"
+            alt={showDetails ? `${selected.name} (${selected.latin})` : 'Gesuchte Vogelart im Abdeck-Modus'}
+            caption={showDetails ? `${selected.name} (${selected.latin})` : 'Überlege dir zuerst Namen & Hauptmerkmal — dann aufdecken!'}
+            credit="Wikimedia Commons"
+            aspectClass="aspect-[16/10]"
+            className="shadow-none"
+          />
+
+          {!showDetails ? (
+            <div className="space-y-4 rounded-2xl bg-[#F5F5F7] p-6 text-center">
+              <p className="text-xs font-bold tracking-wide text-[#0071E3] uppercase">
+                Aktiver Selbsttest · Vogel {currentIdx + 1} von {activeList.length}
+              </p>
+              <h3 className="font-apple-black text-2xl text-[#1D1D1F]">
+                Wie heißt dieser Vogel — und woran erkennst du ihn sofort?
+              </h3>
+              <p className="text-xs font-medium text-[#6E6E73]">
+                Lebensraum-Hinweis: <strong className="text-[#1D1D1F]">{selected.habitat}</strong> · Größe ca.{' '}
+                <strong className="text-[#1D1D1F]">{selected.sizeCm} cm</strong>
+              </p>
+              <button
+                type="button"
+                onClick={() => setRevealed(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-[#0071E3] px-7 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#0077ED]"
+              >
+                <Eye className="h-4 w-4" />
+                <span>Namen &amp; Merkhilfen aufdecken</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Name + Meta Pills */}
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-apple-black text-3xl text-[#1D1D1F]">{selected.name}</h3>
+                  <p className="font-mono text-xs font-medium text-[#86868B] italic">
+                    {selected.latin}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-bold text-[#15803D]">
+                    {selected.habitat}
                   </span>
-                )}
+                  <span className="rounded-full bg-[#F2F2F7] px-3 py-1 font-mono text-xs font-bold text-[#1D1D1F]">
+                    ~{selected.sizeCm} cm
+                  </span>
+                </div>
               </div>
-              <div className="p-2.5">
-                <p className="truncate text-xs font-extrabold text-[#1D1D1F]">{bird.name}</p>
-                <p className="truncate text-[10px] font-medium text-[#86868B]">{bird.sizeCm} cm</p>
+
+              {/* 3 Sticky Study Cards */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-[#E8F2FC] p-4 sm:col-span-2">
+                  <p className="text-[11px] font-bold tracking-wide text-[#0071E3] uppercase">
+                    1-Sekunden-Anker (Sofort merken)
+                  </p>
+                  <p className="mt-1 text-base font-extrabold text-[#1D1D1F]">{selected.signature}</p>
+                </div>
+
+                <div className="rounded-2xl bg-[#F5F5F7] p-4">
+                  <p className="text-[11px] font-bold tracking-wide text-[#86868B] uppercase">
+                    Besonderheit &amp; Verhalten
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed font-medium text-[#1D1D1F]">
+                    {selected.detail}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-[#FFF3E6] p-4">
+                  <p className="text-[11px] font-bold tracking-wide text-[#D95300] uppercase">
+                    Verwechslungs-Stopper
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed font-medium text-[#1D1D1F]">
+                    {selected.lookalikeTip}
+                  </p>
+                </div>
               </div>
-            </button>
-          )
-        })}
+
+              {/* External Fact Links + Study Checkoff */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/[0.06] pt-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <a
+                    href={getGermanWikiUrl(selected)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#F2F2F7] px-3.5 py-2 text-xs font-bold text-[#1D1D1F] transition hover:bg-[#E5E5EA]"
+                  >
+                    <span>Wikipedia-Steckbrief</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-[#0071E3]" />
+                  </a>
+                  <a
+                    href={getNabuSearchUrl(selected)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#F2F2F7] px-3.5 py-2 text-xs font-bold text-[#1D1D1F] transition hover:bg-[#E5E5EA]"
+                  >
+                    <span>NABU-Fakten</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-[#15803D]" />
+                  </a>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => markStatusAndAdvance('review')}
+                    className="rounded-full bg-[#FFF3E6] px-4 py-2 text-xs font-bold text-[#D95300] transition hover:bg-[#FFE6CC]"
+                  >
+                    Nochmal üben
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => markStatusAndAdvance('known')}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#16A34A] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#15803D]"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Sitzt! Weiter →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
