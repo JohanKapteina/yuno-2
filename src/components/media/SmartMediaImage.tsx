@@ -12,6 +12,12 @@ export interface SmartMediaImageProps {
   sourceUrl?: string
   aspectClass?: string
   objectPosition?: string
+  /**
+   * 'contain' (default): shows 100% of the photo centered inside a clean light frame — never crops faces or birds.
+   * 'natural': renders at the photo's exact natural aspect ratio (ideal for hotspot scanners & quizzes!).
+   * 'cover': edge-to-edge fill (only for wide landscape banners).
+   */
+  fit?: 'contain' | 'cover' | 'natural'
   className?: string
   overlay?: ReactNode
   onImageClick?: (coords: { xPct: number; yPct: number }) => void
@@ -35,6 +41,7 @@ export function SmartMediaImage({
   sourceUrl,
   aspectClass = 'aspect-[16/10]',
   objectPosition = 'object-center',
+  fit = 'contain',
   className = '',
   overlay,
   onImageClick,
@@ -110,13 +117,17 @@ export function SmartMediaImage({
     onImageClick({ xPct, yPct })
   }
 
+  const isNatural = fit === 'natural'
+
   return (
     <figure
       className={`overflow-hidden rounded-3xl border border-black/[0.08] bg-white shadow-[0_8px_28px_-14px_rgba(0,0,0,0.08)] ${className}`}
     >
       <div
         onClick={handleContainerClick}
-        className={`relative w-full overflow-hidden bg-[#EFEFF4] ${aspectClass} ${onImageClick ? 'cursor-crosshair select-none' : ''}`}
+        className={`relative w-full overflow-hidden bg-[#F2F2F7] ${
+          isNatural ? 'min-h-[220px]' : aspectClass
+        } ${onImageClick ? 'cursor-crosshair select-none' : ''}`}
       >
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#F2F2F7] text-[#6E6E73]">
@@ -158,7 +169,13 @@ export function SmartMediaImage({
                 setErrored(true)
               }
             }}
-            className={`h-full w-full object-cover transition-opacity duration-500 ${objectPosition} ${loading ? 'opacity-0' : 'opacity-100'}`}
+            className={
+              isNatural
+                ? `block h-auto max-h-[520px] w-full object-contain transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`
+                : fit === 'cover'
+                  ? `h-full w-full object-cover transition-opacity duration-500 ${objectPosition} ${loading ? 'opacity-0' : 'opacity-100'}`
+                  : `h-full w-full object-contain object-center transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`
+            }
           />
         )}
 

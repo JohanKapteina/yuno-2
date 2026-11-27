@@ -1,7 +1,7 @@
 import { geoDistance, geoGraticule10, geoMercator, geoPath } from 'd3-geo'
-import { Minus, Plus, RotateCcw } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
-import type { MouseEvent } from 'react'
+import { Minus, Move, Plus, RotateCcw } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent } from 'react'
 import { feature } from 'topojson-client'
 import type { GeometryCollection, Topology } from 'topojson-specification'
 import countries50m from 'world-atlas/countries-50m.json'
@@ -52,6 +52,8 @@ export interface RealGeoMapProps {
 const VIEW_W = 860
 const VIEW_H = 500
 const EARTH_RADIUS_KM = 6371
+const MIN_ZOOM = 0.75
+const MAX_ZOOM = 8
 
 const worldTopology = countries50m as unknown as Topology<{ countries: GeometryCollection }>
 const countriesGeoJson = feature(worldTopology, worldTopology.objects.countries)
@@ -76,18 +78,78 @@ export function RealGeoMap({
   caption,
 }: RealGeoMapProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
-  const [zoomFactor, setZoomFactor] = useState(1)
+  const containerRef = useRef<HTMLDivElement | null>(null)
 
-  const projection = useMemo(
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+
+  // Reset view automatically when a lesson switches map focus (e.g. changing layer)
+  const centerLon = center[0]
+  const centerLat = center[1]
+  useEffect(() => {
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [centerLon, centerLat, scale])
+
+  const dragRef = useRef<{
+    active: boolean
+    pointerId: number
+    startClientX: number
+    startClientY: number
+    startPanX: number
+    startPanY: number
+    movedPx: number
+  } | null>(null)
+
+  const clampZoom = (z: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Number(z.toFixed(3))))
+
+  // Zoom keeping a specific SVG point anchored under the cursor
+  const zoomAtSvgPoint = useCallback((factor: number, svgX = VIEW_W / 2, svgY = VIEW_H / 2) => {
+    setZoom((prevZoom) => {
+      const nextZoom = clampZoom(prevZoom * factor)
+      const ratio = nextZoom / prevZoom
+      if (ratio === 1) return prevZoom
+      setPan((prevPan) => ({
+        x: svgX - (svgX - prevPan.x) * ratio,
+        y: svgY - (svgY - prevPan.y) * ratio,
+      }))
+      return nextZoom
+    })
+  }, [])
+
+  // Native non-passive wheel listener so trackpad pinch & mouse wheel zoom smoothly without scrolling page
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !allowZoomControls) return
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      if (!svgRef.current) return
+      const rect = svgRef.current.getBoundingClientRect()
+      const svgX = ((e.clientX - rect.left) / rect.width) * VIEW_W
+      const svgY = ((e.clientY - rect.top) / rect.height) * VIEW_H
+      // Trackpad pinch sets ctrlKey=true with smaller deltaY
+      const intensity = e.ctrlKey ? 0.015 : 0.0025
+      const factor = Math.exp(-e.deltaY * intensity)
+      zoomAtSvgPoint(factor, svgX, svgY)
+    }
+
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [allowZoomControls, zoomAtSvgPoint])
+
+  // Base Mercator projection (pan & zoom are applied as crisp vector transform around it)
+  const baseProjection = useMemo(
     () =>
       geoMercator()
-        .center(center)
-        .scale(scale * zoomFactor)
+        .center([centerLon, centerLat])
+        .scale(scale)
         .translate([VIEW_W / 2, VIEW_H / 2]),
-    [center, scale, zoomFactor],
+    [centerLon, centerLat, scale],
   )
 
-  const pathGenerator = useMemo(() => geoPath().projection(projection), [projection])
+  const pathGenerator = useMemo(() => geoPath().projection(baseProjection), [baseProjection])
 
   const landPaths = useMemo(() => {
     return countriesGeoJson.features.map((feat, idx) => ({
@@ -98,34 +160,113 @@ export function RealGeoMap({
 
   const graticulePath = useMemo(() => pathGenerator(graticuleGeoJson) ?? '', [pathGenerator])
 
-  const handleSvgClick = (e: MouseEvent<SVGSVGElement>) => {
-    if (!interactiveClick || !onMapClick || !svgRef.current) return
+  const clientToBaseSvg = (clientX: number, clientY: number): [number, number] | null => {
+    if (!svgRef.current) return null
+    const rect = svgRef.current.getBoundingClientRect()
+    const svgX = ((clientX - rect.left) / rect.width) * VIEW_W
+    const svgY = ((clientY - rect.top) / rect.height) * VIEW_H
+    // Invert current zoom/pan transform: screenX = baseX * zoom + pan.x
+    const baseX = (svgX - pan.x) / zoom
+    const baseY = (svgY - pan.y) / zoom
+    return [baseX, baseY]
+  }
+
+  const handlePointerDown = (e: PointerEvent<SVGSVGElement>) => {
+    if (e.button !== 0) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = {
+      active: true,
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startPanX: pan.x,
+      startPanY: pan.y,
+      movedPx: 0,
+    }
+    setIsDragging(false)
+  }
+
+  const handlePointerMove = (e: PointerEvent<SVGSVGElement>) => {
+    const drag = dragRef.current
+    if (!drag || !drag.active || !svgRef.current) return
+    const dxClient = e.clientX - drag.startClientX
+    const dyClient = e.clientY - drag.startClientY
+    drag.movedPx = Math.hypot(dxClient, dyClient)
+
+    if (drag.movedPx > 4) {
+      setIsDragging(true)
+      const rect = svgRef.current.getBoundingClientRect()
+      const dxSvg = (dxClient / rect.width) * VIEW_W
+      const dySvg = (dyClient / rect.height) * VIEW_H
+      setPan({
+        x: drag.startPanX + dxSvg,
+        y: drag.startPanY + dySvg,
+      })
+    }
+  }
+
+  const handlePointerUp = (e: PointerEvent<SVGSVGElement>) => {
+    const drag = dragRef.current
+    dragRef.current = null
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+
+    const wasClick = !drag || drag.movedPx <= 5
+    setIsDragging(false)
+
+    if (wasClick && interactiveClick && onMapClick) {
+      const basePt = clientToBaseSvg(e.clientX, e.clientY)
+      if (!basePt) return
+      const inverted = baseProjection.invert?.(basePt)
+      if (inverted) {
+        onMapClick([inverted[0], inverted[1]])
+      }
+    }
+  }
+
+  const handleDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!allowZoomControls || !svgRef.current) return
     const rect = svgRef.current.getBoundingClientRect()
     const svgX = ((e.clientX - rect.left) / rect.width) * VIEW_W
     const svgY = ((e.clientY - rect.top) / rect.height) * VIEW_H
-    const inverted = projection.invert?.([svgX, svgY])
-    if (inverted) {
-      onMapClick([inverted[0], inverted[1]])
-    }
+    zoomAtSvgPoint(1.65, svgX, svgY)
+  }
+
+  const resetView = () => {
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
   }
 
   const circlePixelRadius = useMemo(() => {
     if (!circleOverlay) return 0
-    const p1 = projection([circleOverlay.lon, circleOverlay.lat])
+    const p1 = baseProjection([circleOverlay.lon, circleOverlay.lat])
     const degLatDelta = circleOverlay.radiusKm / 111.32
-    const p2 = projection([circleOverlay.lon, circleOverlay.lat + degLatDelta])
+    const p2 = baseProjection([circleOverlay.lon, circleOverlay.lat + degLatDelta])
     if (!p1 || !p2) return 0
     return Math.hypot(p2[0] - p1[0], p2[1] - p1[1])
-  }, [circleOverlay, projection])
+  }, [circleOverlay, baseProjection])
+
+  // Keep pins, text, and strokes crisp and proportional at any zoom level (1x .. 8x)
+  const invScale = 1 / Math.pow(zoom, 0.78)
 
   return (
     <div className="overflow-hidden rounded-3xl border border-black/[0.08] bg-white shadow-[0_8px_28px_-14px_rgba(0,0,0,0.08)]">
-      <div className={`relative w-full ${heightClass}`}>
+      <div ref={containerRef} className={`relative w-full touch-none ${heightClass}`}>
         <svg
           ref={svgRef}
           viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-          onClick={handleSvgClick}
-          className={`h-full w-full select-none ${interactiveClick ? 'cursor-crosshair' : ''}`}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onDoubleClick={handleDoubleClick}
+          className={`h-full w-full select-none ${
+            isDragging
+              ? 'cursor-grabbing'
+              : interactiveClick
+                ? 'cursor-crosshair'
+                : 'cursor-grab'
+          }`}
           role="img"
           aria-label={caption ?? 'Interaktive geografische Karte auf Basis von World-Atlas TopoJSON'}
         >
@@ -136,182 +277,187 @@ export function RealGeoMap({
             </linearGradient>
           </defs>
 
-          {/* Calm Apple Maps Ocean */}
           <rect x={0} y={0} width={VIEW_W} height={VIEW_H} fill="url(#appleOceanGrad)" />
 
-          {/* Subtle graticule grid */}
-          <path d={graticulePath} fill="none" stroke="rgba(15, 23, 42, 0.06)" strokeWidth={0.75} />
+          {/* Transformed Map Layer */}
+          <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+            <path
+              d={graticulePath}
+              fill="none"
+              stroke="rgba(15, 23, 42, 0.06)"
+              strokeWidth={0.75 * invScale}
+            />
 
-          {/* Real TopoJSON Countries (world-atlas 50m) */}
-          <g>
-            {landPaths.map((country) => (
-              <path
-                key={country.id}
-                d={country.d}
-                fill="#F9FAFB"
-                stroke="#C3CEDB"
-                strokeWidth={0.85}
-                className="transition-colors duration-200 hover:fill-[#F1F5F9]"
-              />
-            ))}
-          </g>
-
-          {/* Tolerance / Focus geographic radius */}
-          {circleOverlay && (() => {
-            const pt = projection([circleOverlay.lon, circleOverlay.lat])
-            if (!pt) return null
-            return (
-              <circle
-                cx={pt[0]}
-                cy={pt[1]}
-                r={circlePixelRadius}
-                fill={`${circleOverlay.color}20`}
-                stroke={circleOverlay.color}
-                strokeWidth={2}
-                strokeDasharray="6 4"
-              />
-            )
-          })()}
-
-          {/* Geodesic routes with animated stroke-dashoffset */}
-          {routes.map((route) => {
-            const geoLine = {
-              type: 'LineString' as const,
-              coordinates: route.points,
-            }
-            const d = pathGenerator(geoLine)
-            if (!d) return null
-            const progress = Math.max(0, Math.min(1, route.progress ?? 1))
-            return (
-              <g key={route.id}>
+            <g>
+              {landPaths.map((country) => (
                 <path
-                  d={d}
-                  fill="none"
-                  stroke={route.color}
-                  strokeOpacity={0.22}
-                  strokeWidth={(route.strokeWidth ?? 3) + 1.2}
-                  strokeDasharray="4 6"
-                  strokeLinecap="round"
+                  key={country.id}
+                  d={country.d}
+                  fill="#F9FAFB"
+                  stroke="#C3CEDB"
+                  strokeWidth={0.85 * invScale}
+                  className="transition-colors duration-200 hover:fill-[#F1F5F9]"
                 />
-                <path
-                  d={d}
-                  pathLength={100}
-                  fill="none"
-                  stroke={route.color}
-                  strokeWidth={route.strokeWidth ?? 3.2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeDasharray={route.dashed ? '6 5' : '100'}
-                  strokeDashoffset={route.dashed ? 0 : 100 - progress * 100}
-                  style={{ transition: 'stroke-dashoffset 550ms cubic-bezier(0.22, 1, 0.36, 1)' }}
-                />
-              </g>
-            )
-          })}
+              ))}
+            </g>
 
-          {/* Geodesic connection line */}
-          {connectLine && (() => {
-            const d = pathGenerator({
-              type: 'LineString',
-              coordinates: [connectLine.from, connectLine.to],
-            })
-            if (!d) return null
-            return (
-              <path
-                d={d}
-                fill="none"
-                stroke={connectLine.color ?? '#0071E3'}
-                strokeWidth={2.4}
-                strokeDasharray="5 4"
-              />
-            )
-          })()}
-
-          {/* Crisp Apple-style Pins & Halo Labels */}
-          {markers.map((m) => {
-            const pt = projection([m.lon, m.lat])
-            if (!pt) return null
-            const color = m.color ?? '#0071E3'
-            return (
-              <g
-                key={m.id}
-                transform={`translate(${pt[0]}, ${pt[1]})`}
-                onClick={(e) => {
-                  if (onMarkerClick) {
-                    e.stopPropagation()
-                    onMarkerClick(m)
-                  }
-                }}
-                className={onMarkerClick ? 'cursor-pointer' : undefined}
-              >
-                {m.pulse && (
-                  <circle r={14} fill={color} opacity={0.24}>
-                    <animate attributeName="r" from="6" to="20" dur="2s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" from="0.45" to="0" dur="2s" repeatCount="indefinite" />
-                  </circle>
-                )}
+            {circleOverlay && (() => {
+              const pt = baseProjection([circleOverlay.lon, circleOverlay.lat])
+              if (!pt) return null
+              return (
                 <circle
-                  r={m.active ? 7.5 : m.muted ? 4.5 : 6}
-                  fill={m.muted ? '#86868B' : color}
-                  stroke="#FFFFFF"
-                  strokeWidth={2.5}
+                  cx={pt[0]}
+                  cy={pt[1]}
+                  r={circlePixelRadius}
+                  fill={`${circleOverlay.color}20`}
+                  stroke={circleOverlay.color}
+                  strokeWidth={2 * invScale}
+                  strokeDasharray={`${6 * invScale} ${4 * invScale}`}
                 />
-                <g transform="translate(11, 4)">
-                  <text
-                    className="fill-[#1D1D1F] text-[11.5px] font-bold"
-                    style={{
-                      paintOrder: 'stroke',
-                      stroke: '#FFFFFF',
-                      strokeWidth: 4,
-                      strokeLinejoin: 'round',
-                      opacity: m.muted ? 0.65 : 1,
-                    }}
-                  >
-                    {m.label}
-                  </text>
-                  {m.sublabel && (
+              )
+            })()}
+
+            {routes.map((route) => {
+              const d = pathGenerator({
+                type: 'LineString' as const,
+                coordinates: route.points,
+              })
+              if (!d) return null
+              const progress = Math.max(0, Math.min(1, route.progress ?? 1))
+              return (
+                <g key={route.id}>
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke={route.color}
+                    strokeOpacity={0.22}
+                    strokeWidth={((route.strokeWidth ?? 3) + 1.2) * invScale}
+                    strokeDasharray={`${4 * invScale} ${6 * invScale}`}
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d={d}
+                    pathLength={100}
+                    fill="none"
+                    stroke={route.color}
+                    strokeWidth={(route.strokeWidth ?? 3.2) * invScale}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeDasharray={route.dashed ? '6 5' : '100'}
+                    strokeDashoffset={route.dashed ? 0 : 100 - progress * 100}
+                    style={{ transition: 'stroke-dashoffset 550ms cubic-bezier(0.22, 1, 0.36, 1)' }}
+                  />
+                </g>
+              )
+            })}
+
+            {connectLine && (() => {
+              const d = pathGenerator({
+                type: 'LineString',
+                coordinates: [connectLine.from, connectLine.to],
+              })
+              if (!d) return null
+              return (
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={connectLine.color ?? '#0071E3'}
+                  strokeWidth={2.4 * invScale}
+                  strokeDasharray={`${5 * invScale} ${4 * invScale}`}
+                />
+              )
+            })()}
+
+            {markers.map((m) => {
+              const pt = baseProjection([m.lon, m.lat])
+              if (!pt) return null
+              const color = m.color ?? '#0071E3'
+              return (
+                <g
+                  key={m.id}
+                  transform={`translate(${pt[0]}, ${pt[1]}) scale(${invScale})`}
+                  onClick={(e) => {
+                    if (onMarkerClick) {
+                      e.stopPropagation()
+                      onMarkerClick(m)
+                    }
+                  }}
+                  className={onMarkerClick ? 'cursor-pointer' : undefined}
+                >
+                  {m.pulse && (
+                    <circle r={14} fill={color} opacity={0.24}>
+                      <animate attributeName="r" from="6" to="20" dur="2s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" from="0.45" to="0" dur="2s" repeatCount="indefinite" />
+                    </circle>
+                  )}
+                  <circle
+                    r={m.active ? 7.5 : m.muted ? 4.5 : 6}
+                    fill={m.muted ? '#86868B' : color}
+                    stroke="#FFFFFF"
+                    strokeWidth={2.5}
+                  />
+                  <g transform="translate(11, 4)">
                     <text
-                      y={13}
-                      className="fill-[#515154] text-[10px] font-semibold"
+                      className="fill-[#1D1D1F] text-[11.5px] font-bold"
                       style={{
                         paintOrder: 'stroke',
                         stroke: '#FFFFFF',
-                        strokeWidth: 3.5,
+                        strokeWidth: 4,
+                        strokeLinejoin: 'round',
+                        opacity: m.muted ? 0.65 : 1,
                       }}
                     >
-                      {m.sublabel}
+                      {m.label}
                     </text>
-                  )}
+                    {m.sublabel && (
+                      <text
+                        y={13}
+                        className="fill-[#515154] text-[10px] font-semibold"
+                        style={{
+                          paintOrder: 'stroke',
+                          stroke: '#FFFFFF',
+                          strokeWidth: 3.5,
+                        }}
+                      >
+                        {m.sublabel}
+                      </text>
+                    )}
+                  </g>
                 </g>
-              </g>
-            )
-          })}
+              )
+            })}
+          </g>
         </svg>
 
-        {/* Frosted Apple Zoom Controls */}
+        {/* Upgraded Apple-style Zoom & Pan Controls */}
         {allowZoomControls && (
-          <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-2xl border border-black/10 bg-white/85 p-1 shadow-sm backdrop-blur-md">
+          <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-2xl border border-black/10 bg-white/90 p-1 shadow-sm backdrop-blur-md">
+            <span className="px-2 font-mono text-[11px] font-bold text-[#515154] tabular-nums">
+              {zoom.toFixed(1)}×
+            </span>
             <button
               type="button"
-              onClick={() => setZoomFactor((z) => Math.min(2.6, Number((z * 1.25).toFixed(2))))}
-              className="flex h-7 w-7 items-center justify-center rounded-xl text-[#1D1D1F] transition hover:bg-black/5"
+              onClick={() => zoomAtSvgPoint(1.5)}
+              disabled={zoom >= MAX_ZOOM}
+              className="flex h-7 w-7 items-center justify-center rounded-xl text-[#1D1D1F] transition hover:bg-black/5 disabled:opacity-30"
               title="Hineinzoomen"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
-              onClick={() => setZoomFactor((z) => Math.max(0.75, Number((z / 1.25).toFixed(2))))}
-              className="flex h-7 w-7 items-center justify-center rounded-xl text-[#1D1D1F] transition hover:bg-black/5"
+              onClick={() => zoomAtSvgPoint(1 / 1.5)}
+              disabled={zoom <= MIN_ZOOM}
+              className="flex h-7 w-7 items-center justify-center rounded-xl text-[#1D1D1F] transition hover:bg-black/5 disabled:opacity-30"
               title="Herauszoomen"
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
-            {zoomFactor !== 1 && (
+            {(zoom !== 1 || pan.x !== 0 || pan.y !== 0) && (
               <button
                 type="button"
-                onClick={() => setZoomFactor(1)}
-                className="flex h-7 w-7 items-center justify-center rounded-xl text-[#1D1D1F] transition hover:bg-black/5"
+                onClick={resetView}
+                className="flex h-7 w-7 items-center justify-center rounded-xl text-[#0071E3] transition hover:bg-[#E8F2FC]"
                 title="Ansicht zurücksetzen"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -320,8 +466,9 @@ export function RealGeoMap({
           </div>
         )}
 
-        <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-white/80 px-2.5 py-0.5 font-mono text-[10px] font-medium text-[#6E6E73] backdrop-blur-sm">
-          Natural Earth 50m · d3-geo
+        <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1.5 rounded-lg bg-white/85 px-2.5 py-1 text-[10px] font-semibold text-[#515154] backdrop-blur-sm">
+          <Move className="h-3 w-3 text-[#0071E3]" />
+          <span>Ziehen · Scrollen/Pinch zum Zoomen</span>
         </div>
       </div>
 

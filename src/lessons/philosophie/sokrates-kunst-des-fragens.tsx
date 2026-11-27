@@ -125,8 +125,8 @@ function Screen1AthensAtlas() {
             alt={active.wikiCaption}
             caption={active.wikiCaption}
             credit="Wikimedia Commons"
-            aspectClass="aspect-[16/10]"
-            objectPosition="object-top"
+            aspectClass="aspect-[4/3]"
+            fit="contain"
           />
 
           <div className="apple-card rounded-3xl p-5">
@@ -694,7 +694,7 @@ function Screen5TrialAndDeath() {
           alt="Jacques-Louis David (1787): Der Tod des Sokrates"
           caption="Jacques-Louis David (1787): Der Tod des Sokrates (Metropolitan Museum of Art). Klicke die Punkte 1–3 an."
           credit="Wikimedia Commons"
-          aspectClass="aspect-[16/10]"
+          fit="natural"
           overlay={
             <>
               {PAINTING_HOTSPOTS.map((hs, idx) => (

@@ -589,13 +589,13 @@ function Screen1FieldGuideAtlas() {
                   : 'border-black/[0.07] hover:border-black/20'
               }`}
             >
-              <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#EFEFF4]">
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F2F2F7] p-1">
                 <img
                   src={bird.src}
                   alt={bird.name}
                   loading="lazy"
                   referrerPolicy="no-referrer"
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                  className="h-full w-full object-contain object-center transition duration-300 group-hover:scale-105"
                 />
                 {seen && (
                   <span className="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/90 text-[#16A34A] shadow-xs">
@@ -692,13 +692,13 @@ function Screen2LookalikeDuels() {
               key={b.id}
               className="flex flex-col overflow-hidden rounded-2xl border border-black/[0.08] bg-[#F5F5F7]"
             >
-              <div className="aspect-[4/3] w-full overflow-hidden bg-[#E5E5EA]">
+              <div className="aspect-[4/3] w-full overflow-hidden bg-[#F2F2F7] p-1.5">
                 <img
                   src={b.src}
                   alt={b.name}
                   loading="lazy"
                   referrerPolicy="no-referrer"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain object-center"
                 />
               </div>
               <div className="flex flex-1 flex-col justify-between p-4">
@@ -960,18 +960,22 @@ function Screen4BinocularTrainer() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.05fr_1fr] lg:items-center">
-        {/* Circular Binocular Lens View */}
+        {/* Clean Apple Binocular Viewfinder (shows 100% of every bird centered, never cropped!) */}
         <div className="flex flex-col items-center gap-3">
-          <div className="relative h-64 w-64 overflow-hidden rounded-full border-8 border-[#1D1D1F] bg-[#EFEFF4] shadow-[0_18px_40px_-14px_rgba(0,0,0,0.28)] sm:h-72 sm:w-72">
+          <div className="relative aspect-[4/3] w-full max-w-md overflow-hidden rounded-[28px] border-[6px] border-[#1D1D1F] bg-[#F2F2F7] p-2 shadow-[0_18px_40px_-14px_rgba(0,0,0,0.22)]">
             <img
               src={currentBird.src}
               alt="Gesuchte Vogelart im Fernglas"
               referrerPolicy="no-referrer"
-              className={`h-full w-full object-cover transition duration-500 ${
-                blurLens && !selectedChoiceId ? 'scale-105 blur-[4px]' : 'scale-100 blur-0'
+              className={`h-full w-full object-contain object-center transition duration-500 ${
+                blurLens && !selectedChoiceId ? 'blur-[4px]' : 'blur-0'
               }`}
             />
-            <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-inset ring-black/15" />
+            {/* Subtle optical viewfinder corner ticks */}
+            <span className="pointer-events-none absolute top-3 left-3 h-4 w-4 rounded-tl-md border-t-2 border-l-2 border-[#1D1D1F]/35" />
+            <span className="pointer-events-none absolute top-3 right-3 h-4 w-4 rounded-tr-md border-t-2 border-r-2 border-[#1D1D1F]/35" />
+            <span className="pointer-events-none absolute bottom-3 left-3 h-4 w-4 rounded-bl-md border-b-2 border-l-2 border-[#1D1D1F]/35" />
+            <span className="pointer-events-none absolute right-3 bottom-3 h-4 w-4 rounded-br-md border-r-2 border-b-2 border-[#1D1D1F]/35" />
           </div>
 
           {!selectedChoiceId && (
@@ -1273,13 +1277,15 @@ function Screen6HabitatCompass() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {birdsInHabitat.map((b) => (
           <div key={b.id} className="apple-card flex items-center gap-3.5 rounded-2xl p-3.5">
-            <img
-              src={b.src}
-              alt={b.name}
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              className="h-16 w-16 shrink-0 rounded-2xl object-cover"
-            />
+            <div className="h-16 w-20 shrink-0 overflow-hidden rounded-2xl bg-[#F2F2F7] p-1">
+              <img
+                src={b.src}
+                alt={b.name}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-contain object-center"
+              />
+            </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-extrabold text-[#1D1D1F]">{b.name}</p>
               <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug font-medium text-[#515154]">

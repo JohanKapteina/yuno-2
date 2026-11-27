@@ -41,6 +41,7 @@ export function ImageHotspotQuiz({ card, onComplete }: Props) {
         alt={card.image.alt}
         credit={card.image.credit}
         sourceUrl={card.image.sourceUrl}
+        fit="natural"
         onImageClick={(coords) => {
           if (!submitted) setClickPos(coords)
         }}
