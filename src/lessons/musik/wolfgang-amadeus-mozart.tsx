@@ -351,8 +351,6 @@ function Screen2AriaAndQueenRadar() {
 /*  SCREEN 3 (Wildcard C): Spielbares Mozart-Klavier (3 berühmte Motive!)      */
 /* -------------------------------------------------------------------------- */
 
-const NACHTMUSIK_SEQ = ['G4', 'D4', 'G4', 'D4', 'G4', 'B4', 'D5']
-
 const NACHTMUSIK_NOTES: SynthNote[] = [
   { pitch: 'G4', durationSec: 0.28, offsetSec: 0.0 },
   { pitch: 'D4', durationSec: 0.14, offsetSec: 0.34 },
@@ -391,21 +389,76 @@ const SYMPHONY40_NOTES: SynthNote[] = [
   { pitch: 'Bb5', durationSec: 0.52, offsetSec: 1.92 },
 ]
 
-const PIANO_KEYS = [
-  { pitch: 'D4', label: 'D', sharp: false },
-  { pitch: 'G4', label: 'G', sharp: false },
-  { pitch: 'G#4', label: 'Gis', sharp: true },
-  { pitch: 'A4', label: 'A', sharp: false },
-  { pitch: 'B4', label: 'H', sharp: false },
-  { pitch: 'C5', label: 'C5', sharp: false },
-  { pitch: 'D5', label: 'D5', sharp: false },
-]
+type MozartPieceId = 'nachtmusik' | 'turkish' | 'sym40'
+
+const MOZART_PLAYABLE_PIECES: Record<
+  MozartPieceId,
+  {
+    title: string
+    badge: string
+    accent: string
+    sequence: string[]
+    autoplayNotes: SynthNote[]
+    keys: Array<{ pitch: string; label: string; sharp: boolean }>
+    congrats: string
+  }
+> = {
+  nachtmusik: {
+    title: 'Eine kleine Nachtmusik',
+    badge: 'KV 525 · G-Dur',
+    accent: '#0071E3',
+    sequence: ['G4', 'D4', 'G4', 'D4', 'G4', 'B4', 'D5'],
+    autoplayNotes: NACHTMUSIK_NOTES,
+    keys: [
+      { pitch: 'D4', label: 'D', sharp: false },
+      { pitch: 'G4', label: 'G', sharp: false },
+      { pitch: 'A4', label: 'A', sharp: false },
+      { pitch: 'B4', label: 'H', sharp: false },
+      { pitch: 'C5', label: 'C5', sharp: false },
+      { pitch: 'D5', label: 'D5', sharp: false },
+    ],
+    congrats: 'Perfekt! Genau dieser fröhliche Dreiklang-Sprung macht „Eine kleine Nachtmusik“ unverwechselbar.',
+  },
+  turkish: {
+    title: 'Türkischer Marsch',
+    badge: 'Rondo Alla Turca · KV 331',
+    accent: '#6D28D9',
+    sequence: ['B4', 'A4', 'G#4', 'A4', 'C5', 'D5', 'C5', 'B4', 'C5', 'E5'],
+    autoplayNotes: TURKISH_MARCH_NOTES,
+    keys: [
+      { pitch: 'G#4', label: 'Gis', sharp: true },
+      { pitch: 'A4', label: 'A', sharp: false },
+      { pitch: 'B4', label: 'H', sharp: false },
+      { pitch: 'C5', label: 'C5', sharp: false },
+      { pitch: 'D5', label: 'D5', sharp: false },
+      { pitch: 'E5', label: 'E5', sharp: false },
+    ],
+    congrats: 'Bravo! Du hast das berühmte Hauptmotiv des „Türkischen Marschs“ selbst gespielt!',
+  },
+  sym40: {
+    title: '40. Sinfonie (g-Moll)',
+    badge: 'KV 550 · Dramatisches Seufzer-Motiv',
+    accent: '#C81E1E',
+    sequence: ['Eb5', 'D5', 'D5', 'Eb5', 'D5', 'D5', 'Eb5', 'D5', 'D5', 'Bb5'],
+    autoplayNotes: SYMPHONY40_NOTES,
+    keys: [
+      { pitch: 'D5', label: 'D5', sharp: false },
+      { pitch: 'Eb5', label: 'Es5', sharp: true },
+      { pitch: 'F5', label: 'F5', sharp: false },
+      { pitch: 'G5', label: 'G5', sharp: false },
+      { pitch: 'A5', label: 'A5', sharp: false },
+      { pitch: 'Bb5', label: 'B5', sharp: true },
+    ],
+    congrats: 'Genial! Genau dieses drängende Halbton-Motiv eröffnet Mozarts berühmte 40. Sinfonie!',
+  },
+}
 
 function Screen3PlayableMozartPiano() {
+  const [pieceId, setPieceId] = useState<MozartPieceId>('nachtmusik')
   const [stepIdx, setStepIdx] = useState(0)
-  const [completedOnce, setCompletedOnce] = useState(false)
+  const [completedPieces, setCompletedPieces] = useState<Record<string, boolean>>({})
   const [activeKey, setActiveKey] = useState<string | null>(null)
-  const [autoMode, setAutoMode] = useState<'nachtmusik' | 'turkish' | 'sym40' | null>(null)
+  const [isAutoplaying, setIsAutoplaying] = useState(false)
   const [autoNoteIdx, setAutoNoteIdx] = useState<number | null>(null)
   const cancelRef = useRef<(() => void) | null>(null)
 
@@ -416,19 +469,29 @@ function Screen3PlayableMozartPiano() {
     }
   }, [])
 
-  const targetPitch = NACHTMUSIK_SEQ[stepIdx]
+  const piece = MOZART_PLAYABLE_PIECES[pieceId]
+  const targetPitch = piece.sequence[stepIdx]
+
+  const selectPiece = (nextId: MozartPieceId) => {
+    cancelRef.current?.()
+    setIsAutoplaying(false)
+    setAutoNoteIdx(null)
+    setActiveKey(null)
+    setPieceId(nextId)
+    setStepIdx(0)
+  }
 
   const pressKey = (pitch: string) => {
     cancelRef.current?.()
-    setAutoMode(null)
+    setIsAutoplaying(false)
     setAutoNoteIdx(null)
     playSinglePitch(pitch, 0.42)
     setActiveKey(pitch)
     window.setTimeout(() => setActiveKey((k) => (k === pitch ? null : k)), 240)
 
     if (pitch === targetPitch) {
-      if (stepIdx === NACHTMUSIK_SEQ.length - 1) {
-        setCompletedOnce(true)
+      if (stepIdx === piece.sequence.length - 1) {
+        setCompletedPieces((prev) => ({ ...prev, [pieceId]: true }))
         setStepIdx(0)
       } else {
         setStepIdx((s) => s + 1)
@@ -436,25 +499,21 @@ function Screen3PlayableMozartPiano() {
     }
   }
 
-  const runAuto = (which: 'nachtmusik' | 'turkish' | 'sym40') => {
-    if (autoMode === which) {
+  const toggleAutoplay = () => {
+    if (isAutoplaying) {
       cancelRef.current?.()
-      setAutoMode(null)
+      setIsAutoplaying(false)
       setAutoNoteIdx(null)
+      setActiveKey(null)
       return
     }
     cancelRef.current?.()
-    setAutoMode(which)
-    const notes =
-      which === 'nachtmusik'
-        ? NACHTMUSIK_NOTES
-        : which === 'turkish'
-          ? TURKISH_MARCH_NOTES
-          : SYMPHONY40_NOTES
+    setIsAutoplaying(true)
+    const notes = piece.autoplayNotes
     const { cancel } = playMelody(notes, (idx) => {
       setAutoNoteIdx(idx)
       if (idx === null) {
-        setAutoMode(null)
+        setIsAutoplaying(false)
         setActiveKey(null)
       } else {
         setActiveKey(notes[idx]?.pitch ?? null)
@@ -463,80 +522,95 @@ function Screen3PlayableMozartPiano() {
     cancelRef.current = cancel
   }
 
-  const stripNotes =
-    autoMode === 'turkish'
-      ? TURKISH_MARCH_NOTES.map((n) => n.pitch)
-      : autoMode === 'sym40'
-        ? SYMPHONY40_NOTES.map((n) => n.pitch)
-        : autoMode === 'nachtmusik'
-          ? NACHTMUSIK_NOTES.map((n) => n.pitch)
-          : NACHTMUSIK_SEQ
+  const stripNotes = isAutoplaying ? piece.autoplayNotes.map((n) => n.pitch) : piece.sequence
 
   return (
     <div className="apple-card space-y-6 rounded-3xl p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] pb-4">
         <div>
-          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#0071E3] uppercase">
+          <span
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase"
+            style={{ color: piece.accent }}
+          >
             <Music className="h-4 w-4" />
-            Mozart-Klavier · 3 Ohrwürmer live hören &amp; spielen
+            Mozart-Klavier · Alle 3 Stücke selbst nachspielen
           </span>
           <h3 className="font-apple-black mt-1 text-2xl text-[#1D1D1F]">
-            Spiele selbst „Eine kleine Nachtmusik“!
+            Spiele selbst: „{piece.title}“
           </h3>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              { id: 'nachtmusik', label: 'Nachtmusik', color: 'bg-[#0071E3]' },
-              { id: 'turkish', label: 'Türkischer Marsch', color: 'bg-[#6D28D9]' },
-              { id: 'sym40', label: '40. Sinfonie', color: 'bg-[#C81E1E]' },
-            ] as const
-          ).map((btn) => (
+        <button
+          type="button"
+          onClick={toggleAutoplay}
+          style={!isAutoplaying ? { backgroundColor: piece.accent } : undefined}
+          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white transition ${
+            isAutoplaying ? 'bg-[#1D1D1F]' : 'hover:opacity-90'
+          }`}
+        >
+          {isAutoplaying ? (
+            <Square className="h-3 w-3 fill-current" />
+          ) : (
+            <Play className="h-3.5 w-3.5 fill-current" />
+          )}
+          <span>{isAutoplaying ? 'Stopp' : 'Motiv vorspielen'}</span>
+        </button>
+      </div>
+
+      {/* Piece Switcher Tabs (Play ALL 3 pieces yourself!) */}
+      <div className="grid gap-2 sm:grid-cols-3">
+        {(Object.keys(MOZART_PLAYABLE_PIECES) as MozartPieceId[]).map((id) => {
+          const item = MOZART_PLAYABLE_PIECES[id]
+          const active = id === pieceId
+          const done = Boolean(completedPieces[id])
+          return (
             <button
-              key={btn.id}
+              key={id}
               type="button"
-              onClick={() => runAuto(btn.id)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold text-white transition ${
-                autoMode === btn.id ? 'bg-[#1D1D1F]' : btn.color
+              onClick={() => selectPiece(id)}
+              style={active ? { borderColor: item.accent, backgroundColor: `${item.accent}12` } : undefined}
+              className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                active
+                  ? 'shadow-xs'
+                  : 'border-black/[0.08] bg-[#F5F5F7] hover:bg-[#EFEFF4]'
               }`}
             >
-              {autoMode === btn.id ? (
-                <Square className="h-3 w-3 fill-current" />
-              ) : (
-                <Play className="h-3 w-3 fill-current" />
-              )}
-              {btn.label}
+              <div>
+                <p className="text-xs font-extrabold text-[#1D1D1F]">{item.title}</p>
+                <p className="text-[10px] font-semibold text-[#6E6E73]">{item.badge}</p>
+              </div>
+              {done && <CheckCircle2 className="h-4 w-4 shrink-0 text-[#16A34A]" />}
             </button>
-          ))}
-        </div>
+          )
+        })}
       </div>
 
       {/* Piano-Roll Sequence */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs font-bold text-[#6E6E73]">
           <span>
-            {autoMode
-              ? 'Live-Piano-Roll läuft — höre Mozarts glasklare Melodieführung:'
-              : 'Tippe die blau markierte Taste der Reihe nach an:'}
+            {isAutoplaying
+              ? `Vorspiel läuft: ${piece.title}`
+              : 'Tippe die markierte Taste der Reihe nach an — Ton für Ton:'}
           </span>
-          {!autoMode && (
-            <span className="font-mono text-[#0071E3]">
-              Ton {stepIdx + 1}/{NACHTMUSIK_SEQ.length}
+          {!isAutoplaying && (
+            <span className="font-mono" style={{ color: piece.accent }}>
+              Ton {stepIdx + 1}/{piece.sequence.length}
             </span>
           )}
         </div>
 
         <div className="flex flex-wrap gap-1.5 rounded-2xl bg-[#F5F5F7] p-3">
           {stripNotes.map((pitch, idx) => {
-            const isCurrent = autoMode !== null ? autoNoteIdx === idx : idx === stepIdx
-            const isDone = autoMode === null && idx < stepIdx
+            const isCurrent = isAutoplaying ? autoNoteIdx === idx : idx === stepIdx
+            const isDone = !isAutoplaying && idx < stepIdx
             return (
               <div
-                key={`${pitch}-${idx}`}
+                key={`${pieceId}-${pitch}-${idx}`}
+                style={isCurrent ? { backgroundColor: piece.accent } : undefined}
                 className={`flex min-w-[44px] flex-1 items-center justify-center rounded-xl py-2.5 font-mono text-xs font-extrabold transition ${
                   isCurrent
-                    ? 'scale-105 bg-[#0071E3] text-white shadow-sm'
+                    ? 'scale-105 text-white shadow-sm'
                     : isDone
                       ? 'bg-[#DCFCE7] text-[#15803D]'
                       : 'bg-white text-[#515154]'
@@ -549,21 +623,26 @@ function Screen3PlayableMozartPiano() {
         </div>
       </div>
 
-      {/* Interactive Keyboard */}
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-        {PIANO_KEYS.map((key) => {
-          const isNext = autoMode === null && key.pitch === targetPitch
+      {/* Interactive Keyboard (automatically adapted to the active piece!) */}
+      <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+        {piece.keys.map((key) => {
+          const isNext = !isAutoplaying && key.pitch === targetPitch
           const isPressed = activeKey === key.pitch
           return (
             <button
-              key={key.pitch}
+              key={`${pieceId}-${key.pitch}`}
               type="button"
               onClick={() => pressKey(key.pitch)}
+              style={
+                isNext
+                  ? { borderColor: piece.accent, backgroundColor: `${piece.accent}14`, color: piece.accent }
+                  : undefined
+              }
               className={`flex h-24 flex-col items-center justify-between rounded-2xl border-2 p-3 transition active:scale-95 ${
                 isPressed
-                  ? 'border-[#6D28D9] bg-[#F5F3FF] text-[#6D28D9]'
+                  ? 'border-[#1D1D1F] bg-[#E8F2FC] text-[#0071E3]'
                   : isNext
-                    ? 'border-[#0071E3] bg-[#E8F2FC] text-[#0071E3] shadow-sm'
+                    ? 'shadow-sm'
                     : key.sharp
                       ? 'border-black/15 bg-[#1D1D1F] text-white hover:bg-[#3A3A3C]'
                       : 'border-black/10 bg-white text-[#1D1D1F] hover:bg-[#F5F5F7]'
@@ -572,7 +651,10 @@ function Screen3PlayableMozartPiano() {
               <span className="font-mono text-[10px] font-bold opacity-65">{key.pitch}</span>
               <span className="font-apple-black text-xl">{key.label}</span>
               {isNext && (
-                <span className="rounded-full bg-[#0071E3] px-2 py-0.5 text-[9px] font-bold text-white">
+                <span
+                  style={{ backgroundColor: piece.accent }}
+                  className="rounded-full px-2 py-0.5 text-[9px] font-bold text-white"
+                >
                   Tippen!
                 </span>
               )}
@@ -581,18 +663,15 @@ function Screen3PlayableMozartPiano() {
         })}
       </div>
 
-      {completedOnce && (
+      {completedPieces[pieceId] && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#BBF7D0] bg-[#F0FDF4] p-4 text-xs font-bold text-[#14532D]">
           <span className="inline-flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
-            Perfekt! Genau dieser fröhliche Dreiklang-Sprung macht „Eine kleine Nachtmusik“ unverwechselbar.
+            {piece.congrats}
           </span>
           <button
             type="button"
-            onClick={() => {
-              setStepIdx(0)
-              setCompletedOnce(false)
-            }}
+            onClick={() => setStepIdx(0)}
             className="inline-flex items-center gap-1 text-[#15803D] hover:underline"
           >
             <RotateCcw className="h-3.5 w-3.5" />

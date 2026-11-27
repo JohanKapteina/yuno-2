@@ -308,8 +308,6 @@ function Screen2OrganistAnatomy() {
 /*  SCREEN 3 (Wildcard C): Spielbare Mini-Barockorgel — Toccata & Präludium    */
 /* -------------------------------------------------------------------------- */
 
-const TOCCATA_SEQUENCE = ['A4', 'G4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C#4', 'D4']
-
 const TOCCATA_AUTOPLAY: SynthNote[] = [
   { pitch: 'A4', durationSec: 0.14, offsetSec: 0.0 },
   { pitch: 'G4', durationSec: 0.14, offsetSec: 0.15 },
@@ -333,20 +331,60 @@ const PRELUDE_C_AUTOPLAY: SynthNote[] = [
   { pitch: 'E5', durationSec: 0.55, offsetSec: 1.56 },
 ]
 
-const ORGAN_KEYS = [
-  { pitch: 'C#4', label: 'Cis', sharp: true },
-  { pitch: 'D4', label: 'D', sharp: false },
-  { pitch: 'E4', label: 'E', sharp: false },
-  { pitch: 'F4', label: 'F', sharp: false },
-  { pitch: 'G4', label: 'G', sharp: false },
-  { pitch: 'A4', label: 'A', sharp: false },
-]
+type BachPieceId = 'toccata' | 'prelude'
+
+const BACH_PLAYABLE_PIECES: Record<
+  BachPieceId,
+  {
+    title: string
+    badge: string
+    accent: string
+    sequence: string[]
+    autoplayNotes: SynthNote[]
+    keys: Array<{ pitch: string; label: string; sharp: boolean }>
+    congrats: string
+  }
+> = {
+  toccata: {
+    title: 'Toccata in d-Moll',
+    badge: 'BWV 565 · Berühmtestes Orgelwerk',
+    accent: '#6D28D9',
+    sequence: ['A4', 'G4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C#4', 'D4'],
+    autoplayNotes: TOCCATA_AUTOPLAY,
+    keys: [
+      { pitch: 'C#4', label: 'Cis', sharp: true },
+      { pitch: 'D4', label: 'D', sharp: false },
+      { pitch: 'E4', label: 'E', sharp: false },
+      { pitch: 'F4', label: 'F', sharp: false },
+      { pitch: 'G4', label: 'G', sharp: false },
+      { pitch: 'A4', label: 'A', sharp: false },
+    ],
+    congrats: 'Stark gespielt! Du hast gerade das berühmteste Orgel-Motiv der Musikgeschichte selbst erzeugt.',
+  },
+  prelude: {
+    title: 'Präludium in C-Dur',
+    badge: 'Das wohltemperierte Klavier · BWV 846',
+    accent: '#0071E3',
+    sequence: ['C4', 'E4', 'G4', 'C5', 'E5', 'G4', 'C5', 'E5'],
+    autoplayNotes: PRELUDE_C_AUTOPLAY,
+    keys: [
+      { pitch: 'C4', label: 'C4', sharp: false },
+      { pitch: 'D4', label: 'D4', sharp: false },
+      { pitch: 'E4', label: 'E4', sharp: false },
+      { pitch: 'G4', label: 'G4', sharp: false },
+      { pitch: 'C5', label: 'C5', sharp: false },
+      { pitch: 'E5', label: 'E5', sharp: false },
+    ],
+    congrats: 'Wunderschön! Genau diese ruhige Akkord-Brechung eröffnet „Das wohltemperierte Klavier“.',
+  },
+}
 
 function Screen3PlayableBaroqueOrgan() {
+  const [pieceId, setPieceId] = useState<BachPieceId>('toccata')
   const [stepIdx, setStepIdx] = useState(0)
-  const [completedOnce, setCompletedOnce] = useState(false)
+  const [completedPieces, setCompletedPieces] = useState<Record<string, boolean>>({})
   const [activeKey, setActiveKey] = useState<string | null>(null)
-  const [autoMode, setAutoMode] = useState<'toccata' | 'prelude' | null>(null)
+  const [isAutoplaying, setIsAutoplaying] = useState(false)
   const [autoNoteIdx, setAutoNoteIdx] = useState<number | null>(null)
   const cancelRef = useRef<(() => void) | null>(null)
 
@@ -357,19 +395,29 @@ function Screen3PlayableBaroqueOrgan() {
     }
   }, [])
 
-  const targetPitch = TOCCATA_SEQUENCE[stepIdx]
+  const piece = BACH_PLAYABLE_PIECES[pieceId]
+  const targetPitch = piece.sequence[stepIdx]
+
+  const selectPiece = (nextId: BachPieceId) => {
+    cancelRef.current?.()
+    setIsAutoplaying(false)
+    setAutoNoteIdx(null)
+    setActiveKey(null)
+    setPieceId(nextId)
+    setStepIdx(0)
+  }
 
   const handleKeyPress = (pitch: string) => {
     cancelRef.current?.()
-    setAutoMode(null)
+    setIsAutoplaying(false)
     setAutoNoteIdx(null)
     playSinglePitch(pitch, 0.45)
     setActiveKey(pitch)
     window.setTimeout(() => setActiveKey((k) => (k === pitch ? null : k)), 260)
 
     if (pitch === targetPitch) {
-      if (stepIdx === TOCCATA_SEQUENCE.length - 1) {
-        setCompletedOnce(true)
+      if (stepIdx === piece.sequence.length - 1) {
+        setCompletedPieces((prev) => ({ ...prev, [pieceId]: true }))
         setStepIdx(0)
       } else {
         setStepIdx((s) => s + 1)
@@ -377,20 +425,21 @@ function Screen3PlayableBaroqueOrgan() {
     }
   }
 
-  const runAutoplay = (which: 'toccata' | 'prelude') => {
-    if (autoMode === which) {
+  const toggleAutoplay = () => {
+    if (isAutoplaying) {
       cancelRef.current?.()
-      setAutoMode(null)
+      setIsAutoplaying(false)
       setAutoNoteIdx(null)
+      setActiveKey(null)
       return
     }
     cancelRef.current?.()
-    setAutoMode(which)
-    const notes = which === 'toccata' ? TOCCATA_AUTOPLAY : PRELUDE_C_AUTOPLAY
+    setIsAutoplaying(true)
+    const notes = piece.autoplayNotes
     const { cancel } = playMelody(notes, (idx) => {
       setAutoNoteIdx(idx)
       if (idx === null) {
-        setAutoMode(null)
+        setIsAutoplaying(false)
         setActiveKey(null)
       } else {
         setActiveKey(notes[idx]?.pitch ?? null)
@@ -399,100 +448,125 @@ function Screen3PlayableBaroqueOrgan() {
     cancelRef.current = cancel
   }
 
+  const stripNotes = isAutoplaying ? piece.autoplayNotes.map((n) => n.pitch) : piece.sequence
+
   return (
     <div className="apple-card space-y-6 rounded-3xl p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] pb-4">
         <div>
-          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#6D28D9] uppercase">
+          <span
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase"
+            style={{ color: piece.accent }}
+          >
             <Music className="h-4 w-4" />
-            Du sitzt an Bachs Orgel · Live Web Audio
+            Du sitzt an Bachs Orgel · Beide Stücke selbst nachspielen
           </span>
           <h3 className="font-apple-black mt-1 text-2xl text-[#1D1D1F]">
-            Spiele selbst die Toccata in d-Moll!
+            Spiele selbst: „{piece.title}“
           </h3>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => runAutoplay('toccata')}
-            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition ${
-              autoMode === 'toccata'
-                ? 'bg-[#1D1D1F] text-white'
-                : 'bg-[#6D28D9] text-white hover:bg-[#5B21B6]'
-            }`}
-          >
-            {autoMode === 'toccata' ? <Square className="h-3 w-3 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}
-            Toccata anhören
-          </button>
-          <button
-            type="button"
-            onClick={() => runAutoplay('prelude')}
-            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition ${
-              autoMode === 'prelude'
-                ? 'bg-[#1D1D1F] text-white'
-                : 'bg-[#0071E3] text-white hover:bg-[#0077ED]'
-            }`}
-          >
-            {autoMode === 'prelude' ? <Square className="h-3 w-3 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}
-            Präludium C-Dur anhören
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={toggleAutoplay}
+          style={!isAutoplaying ? { backgroundColor: piece.accent } : undefined}
+          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white transition ${
+            isAutoplaying ? 'bg-[#1D1D1F]' : 'hover:opacity-90'
+          }`}
+        >
+          {isAutoplaying ? (
+            <Square className="h-3 w-3 fill-current" />
+          ) : (
+            <Play className="h-3.5 w-3.5 fill-current" />
+          )}
+          <span>{isAutoplaying ? 'Stopp' : 'Motiv vorspielen'}</span>
+        </button>
+      </div>
+
+      {/* Piece Selector Tabs */}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {(Object.keys(BACH_PLAYABLE_PIECES) as BachPieceId[]).map((id) => {
+          const item = BACH_PLAYABLE_PIECES[id]
+          const active = id === pieceId
+          const done = Boolean(completedPieces[id])
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => selectPiece(id)}
+              style={active ? { borderColor: item.accent, backgroundColor: `${item.accent}12` } : undefined}
+              className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                active ? 'shadow-xs' : 'border-black/[0.08] bg-[#F5F5F7] hover:bg-[#EFEFF4]'
+              }`}
+            >
+              <div>
+                <p className="text-xs font-extrabold text-[#1D1D1F]">{item.title}</p>
+                <p className="text-[10px] font-semibold text-[#6E6E73]">{item.badge}</p>
+              </div>
+              {done && <CheckCircle2 className="h-4 w-4 shrink-0 text-[#16A34A]" />}
+            </button>
+          )
+        })}
       </div>
 
       {/* Glowing Piano-Roll Sequence */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs font-bold text-[#6E6E73]">
           <span>
-            {autoMode === 'prelude'
-              ? 'Präludium in C-Dur (Arpeggio aus „Das wohltemperierte Klavier“)'
-              : 'Tippe die lila markierte Taste der Reihe nach an — Ton für Ton:'}
+            {isAutoplaying
+              ? `Vorspiel läuft: ${piece.title}`
+              : 'Tippe die markierte Taste der Reihe nach an — Ton für Ton:'}
           </span>
-          <span className="font-mono text-[#6D28D9]">
-            Ton {stepIdx + 1}/{TOCCATA_SEQUENCE.length}
-          </span>
+          {!isAutoplaying && (
+            <span className="font-mono" style={{ color: piece.accent }}>
+              Ton {stepIdx + 1}/{piece.sequence.length}
+            </span>
+          )}
         </div>
 
-        <div className="grid grid-cols-9 gap-1.5 rounded-2xl bg-[#F5F5F7] p-3">
-          {(autoMode === 'prelude' ? PRELUDE_C_AUTOPLAY.map((n) => n.pitch) : TOCCATA_SEQUENCE).map(
-            (pitch, idx) => {
-              const isCurrent =
-                autoMode !== null ? autoNoteIdx === idx : idx === stepIdx
-              const isDone = autoMode === null && idx < stepIdx
-              return (
-                <div
-                  key={`${pitch}-${idx}`}
-                  className={`flex flex-col items-center justify-center rounded-xl py-2.5 font-mono text-xs font-extrabold transition ${
-                    isCurrent
-                      ? 'scale-105 bg-[#6D28D9] text-white shadow-sm'
-                      : isDone
-                        ? 'bg-[#DCFCE7] text-[#15803D]'
-                        : 'bg-white text-[#515154]'
-                  }`}
-                >
-                  <span>{pitch.replace('4', '').replace('5', '')}</span>
-                </div>
-              )
-            },
-          )}
+        <div className="flex flex-wrap gap-1.5 rounded-2xl bg-[#F5F5F7] p-3">
+          {stripNotes.map((pitch, idx) => {
+            const isCurrent = isAutoplaying ? autoNoteIdx === idx : idx === stepIdx
+            const isDone = !isAutoplaying && idx < stepIdx
+            return (
+              <div
+                key={`${pieceId}-${pitch}-${idx}`}
+                style={isCurrent ? { backgroundColor: piece.accent } : undefined}
+                className={`flex min-w-[44px] flex-1 items-center justify-center rounded-xl py-2.5 font-mono text-xs font-extrabold transition ${
+                  isCurrent
+                    ? 'scale-105 text-white shadow-sm'
+                    : isDone
+                      ? 'bg-[#DCFCE7] text-[#15803D]'
+                      : 'bg-white text-[#515154]'
+                }`}
+              >
+                {pitch}
+              </div>
+            )
+          })}
         </div>
       </div>
 
-      {/* Clickable Mini-Organ Keyboard */}
+      {/* Clickable Keyboard */}
       <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
-        {ORGAN_KEYS.map((key) => {
-          const isNext = autoMode === null && key.pitch === targetPitch
+        {piece.keys.map((key) => {
+          const isNext = !isAutoplaying && key.pitch === targetPitch
           const isPressed = activeKey === key.pitch
           return (
             <button
-              key={key.pitch}
+              key={`${pieceId}-${key.pitch}`}
               type="button"
               onClick={() => handleKeyPress(key.pitch)}
+              style={
+                isNext
+                  ? { borderColor: piece.accent, backgroundColor: `${piece.accent}14`, color: piece.accent }
+                  : undefined
+              }
               className={`relative flex h-24 flex-col items-center justify-between rounded-2xl border-2 p-3 transition active:scale-95 ${
                 isPressed
                   ? 'border-[#0071E3] bg-[#E8F2FC] text-[#0071E3]'
                   : isNext
-                    ? 'border-[#6D28D9] bg-[#F5F3FF] text-[#6D28D9] shadow-[0_8px_20px_-8px_rgba(109,40,217,0.45)]'
+                    ? 'shadow-sm'
                     : key.sharp
                       ? 'border-black/15 bg-[#1D1D1F] text-white hover:bg-[#3A3A3C]'
                       : 'border-black/10 bg-white text-[#1D1D1F] hover:bg-[#F5F5F7]'
@@ -501,7 +575,10 @@ function Screen3PlayableBaroqueOrgan() {
               <span className="font-mono text-[10px] font-bold opacity-65">{key.pitch}</span>
               <span className="font-apple-black text-xl">{key.label}</span>
               {isNext && (
-                <span className="rounded-full bg-[#6D28D9] px-2 py-0.5 text-[9px] font-bold text-white">
+                <span
+                  style={{ backgroundColor: piece.accent }}
+                  className="rounded-full px-2 py-0.5 text-[9px] font-bold text-white"
+                >
                   Tippen!
                 </span>
               )}
@@ -510,18 +587,15 @@ function Screen3PlayableBaroqueOrgan() {
         })}
       </div>
 
-      {completedOnce && (
+      {completedPieces[pieceId] && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#BBF7D0] bg-[#F0FDF4] p-4 text-xs font-bold text-[#14532D]">
           <span className="inline-flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-[#16A34A]" />
-            Stark gespielt! Du hast gerade das berühmteste Orgel-Motiv der Musikgeschichte selbst erzeugt.
+            {piece.congrats}
           </span>
           <button
             type="button"
-            onClick={() => {
-              setStepIdx(0)
-              setCompletedOnce(false)
-            }}
+            onClick={() => setStepIdx(0)}
             className="inline-flex items-center gap-1 text-[#15803D] hover:underline"
           >
             <RotateCcw className="h-3.5 w-3.5" />
